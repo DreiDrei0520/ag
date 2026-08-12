@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, .font-display {
+  font-family: 'Barlow Condensed', sans-serif;
+  letter-spacing: 0.01em;
+}
+
+.font-mono-data {
+  font-family: 'Roboto Mono', monospace;
+}
+
+::selection {
+  background-color: #f26b21;
+  color: #fff;
+}
+
+*:focus-visible {
+  outline: 2px solid #f26b21;
+  outline-offset: 2px;
+}
+
+/* Blueprint grid background for dark sections */
+.blueprint-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.blueprint-grid-light {
+  background-image:
+    linear-gradient(rgba(28, 33, 38, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(28, 33, 38, 0.04) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+/* Construction tape ticker (signature element) */
+.tape-ticker {
+  position: relative;
+  overflow: hidden;
+  background: #f26b21;
+  color: #fff;
+  transform: rotate(-1.2deg) scale(1.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.35);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.tape-ticker::before,
+.tape-ticker::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 28px;
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.35) 0,
+    rgba(255, 255, 255, 0.35) 6px,
+    transparent 6px,
+    transparent 12px
+  );
+  z-index: 1;
+}
+
+.tape-ticker::before { left: 0; }
+.tape-ticker::after { right: 0; }
+
+.tape-track {
+  display: flex;
+  white-space: nowrap;
+  width: max-content;
+  animation: tape-scroll 40s linear infinite;
+}
+
+.tape-track > span {
+  padding: 10px 24px;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+@keyframes tape-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tape-track { animation: none; }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c2c9d0; border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
+::-webkit-scrollbar-thumb:hover { background: #8d97a0; background-clip: content-box; }
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-agorange px-5 text-sm font-bold text-white transition-all duration-150 hover:bg-agorange-600 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50;
+  }
+  .btn-secondary {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg border-2 border-agdark-800 px-5 text-sm font-bold text-agdark-800 transition-all duration-150 hover:bg-agdark-800 hover:text-white active:scale-[0.98] disabled:opacity-50;
+  }
+  .btn-outline-white {
+    @apply inline-flex h-10 items-center justify-center gap-2 rounded-lg border-2 border-white px-5 text-sm font-bold text-white transition-all duration-150 hover:bg-white hover:text-agdark-800 active:scale-[0.98];
+  }
+  .eyebrow {
+    @apply text-xs font-bold uppercase tracking-[0.22em] text-agorange;
+  }
+}

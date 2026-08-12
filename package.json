@@ -1,0 +1,48 @@
+{
+  "name": "ag-construction-builders",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node ./node_modules/vite/bin/vite.js",
+    "build": "node ./node_modules/typescript/bin/tsc -b && node ./node_modules/vite/bin/vite.js build",
+    "preview": "node ./node_modules/vite/bin/vite.js preview",
+    "lint": "node ./node_modules/eslint/bin/eslint.js ."
+  },
+  "dependencies": {
+    "@emailjs/browser": "^4.4.1",
+    "@hookform/resolvers": "^3.9.0",
+    "chart.js": "^4.4.4",
+    "clsx": "^2.1.1",
+    "date-fns": "^3.6.0",
+    "firebase": "^10.13.2",
+    "framer-motion": "^11.5.4",
+    "lucide-react": "^0.441.0",
+    "react": "^18.3.1",
+    "react-chartjs-2": "^5.2.0",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.53.0",
+    "react-hot-toast": "^2.4.1",
+    "react-router-dom": "^6.26.2",
+    "recharts": "^3.10.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/firebase": "^2.4.32",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^26.1.1",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@types/react-router-dom": "^5.3.3",
+    "@typescript-eslint/eslint-plugin": "^8.5.0",
+    "@typescript-eslint/parser": "^8.5.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.10.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "postcss": "^8.4.45",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.5"
+  }
+}
