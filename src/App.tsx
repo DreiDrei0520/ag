@@ -2,7 +2,7 @@ import React, { Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { PageLoader } from './components/ui';
 import ProtectedRoute, { PublicOnlyRoute } from './components/shared/ProtectedRoute';
-import { ClientLayout, AdminLayout } from './layouts/AppShell';
+import { AdminLayout } from './layouts/AppShell';
 import PublicLayout from './layouts/PublicLayout';
 
 // Public
@@ -16,18 +16,7 @@ import AnnouncementsPage from './pages/public/AnnouncementsPage';
 import AboutPage from './pages/public/AboutPage';
 import ContactPage from './pages/public/ContactPage';
 import LoginPage from './pages/public/LoginPage';
-import RegisterPage from './pages/public/RegisterPage';
 import ForgotPasswordPage from './pages/public/ForgotPasswordPage';
-
-// Client
-import ClientDashboard from './pages/client/DashboardPage';
-import ClientQuotations from './pages/client/QuotationsPage';
-import ClientQuotationDetail from './pages/client/QuotationDetailPage';
-import ClientInquiries from './pages/client/InquiriesPage';
-import ClientInquiryDetail from './pages/client/InquiryDetailPage';
-import ClientInquiryNew from './pages/client/InquiryNewPage';
-import ClientNotifications from './pages/client/NotificationsPage';
-import ClientProfile from './pages/client/ProfilePage';
 
 // Admin
 import AdminDashboard from './pages/admin/DashboardPage';
@@ -39,7 +28,6 @@ import AdminPricing from './pages/admin/PricingPage';
 import AdminAdditionalServices from './pages/admin/AdditionalServicesPage';
 import AdminQuotations from './pages/admin/QuotationsPage';
 import AdminQuotationDetail from './pages/admin/QuotationDetailPage';
-import AdminUsers from './pages/admin/UsersPage';
 import AdminInquiries from './pages/admin/InquiriesPage';
 import AdminInquiryDetail from './pages/admin/InquiryDetailPage';
 import AdminReports from './pages/admin/ReportsPage';
@@ -86,14 +74,6 @@ export default function App() {
           }
         />
         <Route
-          path="/register"
-          element={
-            <PublicOnlyRoute>
-              <RegisterPage />
-            </PublicOnlyRoute>
-          }
-        />
-        <Route
           path="/forgot-password"
           element={
             <PublicOnlyRoute>
@@ -101,26 +81,6 @@ export default function App() {
             </PublicOnlyRoute>
           }
         />
-
-        {/* Client portal */}
-        <Route
-          element={
-            <ProtectedRoute roles={['client']}>
-              <ClientLayout />
-            </ProtectedRoute>
-          }
-        >
-          <Route path="/client/dashboard" element={<ClientDashboard />} />
-          <Route path="/client/services" element={<ServicesPage />} />
-          <Route path="/client/projects" element={<ProjectsPage />} />
-          <Route path="/client/quotations" element={<ClientQuotations />} />
-          <Route path="/client/quotations/:id" element={<ClientQuotationDetail />} />
-          <Route path="/client/inquiries" element={<ClientInquiries />} />
-          <Route path="/client/inquiries/new" element={<ClientInquiryNew />} />
-          <Route path="/client/inquiries/:id" element={<ClientInquiryDetail />} />
-          <Route path="/client/notifications" element={<ClientNotifications />} />
-          <Route path="/client/profile" element={<ClientProfile />} />
-        </Route>
 
         {/* Admin portal */}
         <Route
@@ -139,7 +99,6 @@ export default function App() {
           <Route path="/admin/additional-services" element={<AdminAdditionalServices />} />
           <Route path="/admin/quotations" element={<AdminQuotations />} />
           <Route path="/admin/quotations/:id" element={<AdminQuotationDetail />} />
-          <Route path="/admin/users" element={<AdminUsers />} />
           <Route path="/admin/inquiries" element={<AdminInquiries />} />
           <Route path="/admin/inquiries/:id" element={<AdminInquiryDetail />} />
           <Route path="/admin/reports" element={<AdminReports />} />

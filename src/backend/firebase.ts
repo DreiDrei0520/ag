@@ -15,11 +15,9 @@ import {
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
-  createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   sendPasswordResetEmail,
-  updateProfile as updateAuthProfile,
   setPersistence,
   browserLocalPersistence,
   browserSessionPersistence,
@@ -211,35 +209,14 @@ export const fbMessages = {
 // ---------- auth ----------
 
 export const fbAuth = {
-  async registerClient(input: {
-    fullName: string;
-    email: string;
-    password: string;
-    phone?: string;
-    address?: string;
-  }): Promise<AppUser> {
-    const credential = await createUserWithEmailAndPassword(auth, input.email, input.password);
-    await updateAuthProfile(credential.user, { displayName: input.fullName });
-    const appUser: AppUser = {
-      uid: credential.user.uid,
-      fullName: input.fullName,
-      email: input.email,
-      phone: input.phone,
-      address: input.address,
-      role: 'client',
-      emailVerified: credential.user.emailVerified,
-      isActive: true,
-      createdAt: nowIso(),
-    };
-    await setDoc(doc(db, 'users', credential.user.uid), {
-      ...stripUndefined(appUser),
-      createdAt: serverTimestamp(),
-    });
-    return appUser;
-  },
   async login(email: string, password: string, remember: boolean): Promise<void> {
     await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
-    await signInWithEmailAndPassword(auth, email, password);
+    const credential = await signInWithEmailAndPassword(auth, email, password);
+    const snap = await getDoc(doc(db, 'users', credential.user.uid));
+    if (!snap.exists() || snap.data().role !== 'admin') {
+      await signOut(auth);
+      throw new Error('Only admin accounts can log in.');
+    }
   },
   async logout(): Promise<void> {
     await signOut(auth);

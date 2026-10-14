@@ -35,7 +35,6 @@ import {
 export const isDemoMode = !isFirebaseConfigured;
 
 type AuthAPI = {
-  registerClient(input: { fullName: string; email: string; password: string; phone?: string; address?: string }): Promise<AppUser>;
   login(email: string, password: string, remember: boolean): Promise<void>;
   logout(): Promise<void>;
   requestPasswordResetCode(email: string): Promise<{ sentCode: boolean; demoCode?: string }>;

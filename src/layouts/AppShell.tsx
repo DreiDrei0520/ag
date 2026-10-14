@@ -16,7 +16,6 @@ import {
   Settings,
   ShieldCheck,
   Tags,
-  Users,
   Wrench,
   X,
 } from 'lucide-react';
@@ -100,7 +99,7 @@ export function AppShell({
   const sidebar = (
     <div className="flex h-full flex-col bg-agdark-800">
       <div className="flex items-center justify-between px-4 py-5">
-        <NavLink to={user.role === 'admin' ? '/admin/dashboard' : '/client/dashboard'}>
+        <NavLink to="/admin/dashboard">
           <Logo dark />
         </NavLink>
         <button className="text-agdark-300 lg:hidden" onClick={() => setSidebarOpen(false)} aria-label="Close menu">
@@ -156,7 +155,7 @@ export function AppShell({
                     <p className="text-sm font-semibold text-agdark-800">{user.fullName}</p>
                     <p className="truncate text-xs text-agdark-400">{user.email}</p>
                   </div>
-                  <NavLink to={user.role === 'admin' ? '/admin/profile' : '/client/profile'} onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm text-agdark-700 hover:bg-agdark-50">
+                  <NavLink to="/admin/profile" onClick={() => setProfileOpen(false)} className="block px-4 py-2.5 text-sm text-agdark-700 hover:bg-agdark-50">
                     Profile settings
                   </NavLink>
                   <button onClick={handleLogout} className="block w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50">
@@ -174,39 +173,6 @@ export function AppShell({
       </div>
     </div>
   );
-}
-
-// ---------- Client layout ----------
-
-const clientGroups: NavGroup[] = [
-  {
-    items: [{ to: '/client/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={16} /> }],
-  },
-  {
-    title: 'Explore',
-    items: [
-      { to: '/client/services', label: 'Services', icon: <Wrench size={16} /> },
-      { to: '/client/projects', label: 'Projects', icon: <Building2 size={16} /> },
-    ],
-  },
-  {
-    title: 'Your projects',
-    items: [
-      { to: '/client/quotations', label: 'Quotations', icon: <ReceiptText size={16} /> },
-      { to: '/client/inquiries', label: 'Inquiries', icon: <MessageSquareText size={16} /> },
-    ],
-  },
-  {
-    title: 'Account',
-    items: [
-      { to: '/client/notifications', label: 'Notifications', icon: <Bell size={16} /> },
-      { to: '/client/profile', label: 'Profile', icon: <Settings size={16} /> },
-    ],
-  },
-];
-
-export function ClientLayout() {
-  return <AppShell groups={clientGroups} accentLabel="Client portal" title="My Account" />;
 }
 
 // ---------- Admin layout ----------
@@ -233,9 +199,8 @@ const adminGroups: NavGroup[] = [
     ],
   },
   {
-    title: 'Client management',
+    title: 'Client requests',
     items: [
-      { to: '/admin/users', label: 'Clients & Users', icon: <Users size={16} /> },
       { to: '/admin/inquiries', label: 'Inquiries', icon: <MessageSquareText size={16} /> },
     ],
   },

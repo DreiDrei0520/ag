@@ -236,7 +236,6 @@ function readAuthMap(): Record<string, string> {
 function seedAuthMap() {
   const map = readAuthMap();
   map['admin-1'] = btoa('Admin123!');
-  map['client-1'] = btoa('Client123!');
   localStorage.setItem(AUTH_KEY, JSON.stringify(map));
 }
 
@@ -263,42 +262,13 @@ function emitAuth() {
 }
 
 export const localAuth = {
-  async registerClient(input: {
-    fullName: string;
-    email: string;
-    password: string;
-    phone?: string;
-    address?: string;
-  }): Promise<AppUser> {
-    const existing = read().users.find((u) => u.email.toLowerCase() === input.email.toLowerCase());
-    if (existing) throw new Error('An account with this email already exists.');
-    const user: AppUser = {
-      uid: uid('u_'),
-      fullName: input.fullName,
-      email: input.email,
-      phone: input.phone,
-      address: input.address,
-      role: 'client',
-      emailVerified: true,
-      isActive: true,
-      createdAt: nowIso(),
-    };
-    mutate((s) => {
-      s.users.unshift(user);
-    }, 'users');
-    const map = readAuthMap();
-    map[user.uid] = btoa(input.password);
-    localStorage.setItem(AUTH_KEY, JSON.stringify(map));
-    localStorage.setItem(SESSION_KEY, user.uid);
-    emitAuth();
-    return clone(user);
-  },
   async login(email: string, password: string): Promise<void> {
     seedAuthMap();
     const user = read().users.find((u) => u.email.toLowerCase() === email.toLowerCase());
     if (!user) throw new Error('No account found for this email.');
     const map = readAuthMap();
     if (map[user.uid] !== btoa(password)) throw new Error('Incorrect password.');
+    if (user.role !== 'admin') throw new Error('Only admin accounts can log in.');
     if (!user.isActive) throw new Error('This account has been deactivated. Contact the administrator.');
     user.lastLoginAt = nowIso();
     mutate((s) => {

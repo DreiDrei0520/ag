@@ -33,18 +33,6 @@ export const seedUsers: AppUser[] = [
     createdAt: '2025-06-01T09:00:00.000Z',
     lastLoginAt: t,
   },
-  {
-    uid: 'client-1',
-    fullName: 'Juan Dela Cruz',
-    email: 'client@agbuilders.ph',
-    role: 'client',
-    phone: '+63 918 555 0134',
-    address: 'Brgy. Mayondon, Los Baños, Laguna',
-    emailVerified: true,
-    isActive: true,
-    createdAt: '2025-08-10T04:00:00.000Z',
-    lastLoginAt: t,
-  },
 ];
 
 export const seedServiceCategories: ServiceCategory[] = [
@@ -793,9 +781,6 @@ export const seedInquiryMessages: InquiryMessage[] = [
 ];
 
 export const seedNotifications: AppNotification[] = [
-  { id: 'n-1', userId: 'client-1', audience: 'client', title: 'Quotation ready', message: 'Your preliminary estimate for the Residential project is ready to review.', type: 'quotation', referenceId: 'q-demo-1', link: '/client/quotations/q-demo-1', isRead: false, createdAt: '2026-02-01T03:00:00.000Z' },
-  { id: 'n-2', userId: 'client-1', audience: 'client', title: 'Inquiry update', message: 'Your inquiry INQ-001 was marked In Progress by our team.', type: 'inquiry', referenceId: 'inq-1', link: '/client/inquiries/inq-1', isRead: false, createdAt: '2026-02-02T08:00:00.000Z' },
-  { id: 'n-3', userId: 'client-1', audience: 'client', title: 'Welcome to AG Construction', message: 'Thanks for registering. Explore services and try the Smart Quotation tool.', type: 'system', link: '/client/dashboard', isRead: true, createdAt: '2026-01-10T05:00:00.000Z' },
   { id: 'n-4', userId: 'admin-1', audience: 'admin', title: 'New inquiry received', message: 'Juan Dela Cruz submitted a new inquiry about townhouse renovation.', type: 'inquiry', referenceId: 'inq-2', link: '/admin/inquiries/inq-2', isRead: false, createdAt: '2026-02-03T09:00:00.000Z' },
 ];
 

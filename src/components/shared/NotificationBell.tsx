@@ -77,7 +77,7 @@ export default function NotificationBell({ user }: { user: AppUser }) {
             )}
           </div>
           <Link
-            to={user.role === 'admin' ? '/admin/notifications' : '/client/notifications'}
+            to="/admin/notifications"
             onClick={() => setOpen(false)}
             className="block border-t border-agdark-100 bg-agdark-50 px-4 py-2.5 text-center text-xs font-semibold text-agorange hover:bg-agdark-100"
           >

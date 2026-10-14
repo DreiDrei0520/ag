@@ -16,15 +16,13 @@ export default function ProtectedRoute({
 
   if (loading) return <PageLoader label="Checking your session…" />;
   if (!user) return <Navigate to="/login" state={{ from: location.pathname }} replace />;
-  if (!roles.includes(user.role)) {
-    return <Navigate to={user.role === 'admin' ? '/admin/dashboard' : '/client/dashboard'} replace />;
-  }
+  if (!roles.includes(user.role)) return <Navigate to="/" replace />;
   if (!user.isActive) {
     return (
       <div className="flex min-h-[60vh] flex-col items-center justify-center gap-3 px-6 text-center">
         <h1 className="font-display text-2xl font-bold text-agdark-800">Account deactivated</h1>
         <p className="max-w-md text-sm text-agdark-500">
-          Your account has been deactivated. Please contact AG Construction Builders to restore access.
+          This admin account has been deactivated.
         </p>
       </div>
     );
@@ -35,6 +33,6 @@ export default function ProtectedRoute({
 export function PublicOnlyRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading) return <PageLoader />;
-  if (user) return <Navigate to={user.role === 'admin' ? '/admin/dashboard' : '/client/dashboard'} replace />;
+  if (user) return <Navigate to="/admin/dashboard" replace />;
   return <>{children}</>;
 }

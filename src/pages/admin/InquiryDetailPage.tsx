@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Send } from 'lucide-react';
+import { ArrowLeft, Mail, Send } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useInquiries, useInquiryMessages } from '../../hooks/useData';
 import { db } from '../../backend';
-import { writeAuditLog, notifyUser } from '../../lib/activity';
+import { writeAuditLog } from '../../lib/activity';
 import { formatDateTime } from '../../lib/format';
 import { Button, Card, EmptyState, PageLoader, Select, StatusBadge } from '../../components/ui';
 import { INQUIRY_STATUSES } from '../../lib/constants';
@@ -47,17 +47,6 @@ export default function AdminInquiryDetail() {
       if (inquiry.status === 'Pending') {
         await db.inquiries.update(inquiry.id, { status: 'In Progress' });
       }
-      if (inquiry.clientId) {
-        await notifyUser({
-          userId: inquiry.clientId,
-          audience: 'client',
-          title: 'New reply from AG Construction',
-          message: 'Our team responded to your inquiry.',
-          type: 'inquiry',
-          referenceId: inquiry.id,
-          link: `/client/inquiries/${inquiry.id}`,
-        });
-      }
       setText('');
     } catch {
       toast.error('Unable to send message.');
@@ -77,17 +66,6 @@ export default function AdminInquiryDetail() {
     try {
       await db.inquiries.update(inquiry.id, { status: next });
       if (user) await writeAuditLog({ actor: user }, 'inquiry_status_changed', 'inquiry', inquiry.id, { from: inquiry.status, to: next });
-      if (inquiry.clientId) {
-        await notifyUser({
-          userId: inquiry.clientId,
-          audience: 'client',
-          title: `Inquiry ${next}`,
-          message: `Your inquiry ${inquiry.inquiryNumber} was marked ${next} by our team.`,
-          type: 'inquiry',
-          referenceId: inquiry.id,
-          link: `/client/inquiries/${inquiry.id}`,
-        });
-      }
       toast.success(`Status updated to ${next}`);
     } catch {
       toast.error('Unable to update the status.');
@@ -124,6 +102,14 @@ export default function AdminInquiryDetail() {
           {inquiry.inquiryNumber} · {inquiry.clientName} · {inquiry.clientEmail}
         </p>
         <h1 className="mt-1 font-display text-2xl font-bold uppercase tracking-wide text-agdark-800">{inquiry.subject}</h1>
+        {inquiry.clientEmail ? (
+          <a
+            href={`mailto:${inquiry.clientEmail}?subject=${encodeURIComponent(`Re: ${inquiry.inquiryNumber} — ${inquiry.subject}`)}`}
+            className="mt-2 inline-flex items-center gap-1.5 text-sm font-bold text-agorange hover:underline"
+          >
+            <Mail size={14} /> Reply to client by email
+          </a>
+        ) : null}
         <p className="mt-3 text-sm leading-6 text-agdark-600">{inquiry.message}</p>
         {inquiry.projectDetails ? (
           <p className="mt-2 rounded-lg bg-agdark-50 px-4 py-3 text-sm text-agdark-600">

@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, Building2, MessageSquareText, ReceiptText, Users, Wrench } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useServices, useProjects, useQuotations, useInquiries, useUsers } from '../../hooks/useData';
+import { useServices, useProjects, useQuotations, useInquiries } from '../../hooks/useData';
 import { formatPHP, formatDate } from '../../lib/format';
 import { Card, StatCard, StatusBadge, PageLoader } from '../../components/ui';
 
@@ -10,13 +10,12 @@ export default function AdminDashboard() {
   const { projects, loading: projectsLoading } = useProjects();
   const { quotations, loading: quotationsLoading } = useQuotations();
   const { inquiries, loading: inquiriesLoading } = useInquiries();
-  const { users, loading: usersLoading } = useUsers();
 
-  if (servicesLoading || quotationsLoading || projectsLoading || inquiriesLoading || usersLoading) {
+  if (servicesLoading || quotationsLoading || projectsLoading || inquiriesLoading) {
     return <PageLoader label="Loading dashboard…" />;
   }
 
-  const clients = users.filter((u) => u.role === 'client');
+  const clients = new Set([...quotations, ...inquiries].map((r) => r.clientEmail?.toLowerCase()).filter(Boolean));
   const activeServices = services.filter((s) => s.isActive);
   const submitted = quotations.filter((q) => q.status === 'Submitted' || q.status === 'Approved');
   const openInquiries = inquiries.filter((i) => i.status === 'Pending' || i.status === 'In Progress');
@@ -49,7 +48,7 @@ export default function AdminDashboard() {
         <StatCard label="Quotations" value={quotations.length} icon={<ReceiptText size={20} />} hint={`${submitted.length} awaiting review`} />
         <StatCard label="Quoted value" value={formatPHP(totalQuoted)} icon={<ReceiptText size={20} />} accent="blue" hint="Across all quotations" />
         <StatCard label="Open inquiries" value={openInquiries.length} icon={<MessageSquareText size={20} />} accent="green" hint={`${inquiries.length} total`} />
-        <StatCard label="Active clients" value={clients.length} icon={<Users size={20} />} accent="dark" hint="Registered client accounts" />
+        <StatCard label="Clients" value={clients.size} icon={<Users size={20} />} accent="dark" hint="Unique emails from requests" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">

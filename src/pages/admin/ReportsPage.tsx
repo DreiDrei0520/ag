@@ -1,5 +1,5 @@
 import { Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useQuotations, useInquiries, useProjects, useUsers } from '../../hooks/useData';
+import { useQuotations, useInquiries, useProjects } from '../../hooks/useData';
 import { formatPHP } from '../../lib/format';
 import { Card, PageLoader, StatCard } from '../../components/ui';
 
@@ -9,13 +9,12 @@ export default function AdminReports() {
   const { quotations, loading: quotationsLoading } = useQuotations();
   const { inquiries, loading: inquiriesLoading } = useInquiries();
   const { projects, loading: projectsLoading } = useProjects();
-  const { users, loading: usersLoading } = useUsers();
 
-  if (quotationsLoading || inquiriesLoading || projectsLoading || usersLoading) {
+  if (quotationsLoading || inquiriesLoading || projectsLoading) {
     return <PageLoader label="Loading reports…" />;
   }
 
-  const clients = users.filter((u) => u.role === 'client' && u.isActive);
+  const clients = new Set([...quotations, ...inquiries].map((r) => r.clientEmail?.toLowerCase()).filter(Boolean));
   const totalQuoted = quotations.reduce((sum, q) => sum + q.totalEstimate, 0);
   const avgQuote = quotations.length ? Math.round(totalQuoted / quotations.length) : 0;
   const approved = quotations.filter((q) => q.status === 'Approved' || q.status === 'Converted');
@@ -55,7 +54,7 @@ export default function AdminReports() {
         <StatCard label="Total quoted" value={formatPHP(totalQuoted)} icon={<span className="text-lg">₱</span>} />
         <StatCard label="Average estimate" value={formatPHP(avgQuote)} icon={<span className="text-lg">∑</span>} accent="blue" />
         <StatCard label="Conversion rate" value={`${conversion}%`} icon={<span className="text-lg">✓</span>} accent="green" hint={`${approved.length} approved / converted`} />
-        <StatCard label="Active clients" value={clients.length} icon={<span className="text-lg">👥</span>} accent="dark" hint={`${projects.length} portfolio projects`} />
+        <StatCard label="Clients" value={clients.size} icon={<span className="text-lg">👥</span>} accent="dark" hint={`${projects.length} portfolio projects`} />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -121,7 +120,7 @@ export default function AdminReports() {
         <MiniStat label="Total inquiries" value={inquiries.length} />
         <MiniStat label="Open inquiries" value={inquiries.filter((i) => i.status === 'Pending' || i.status === 'In Progress').length} accent />
         <MiniStat label="Published projects" value={projects.filter((p) => p.isPublished).length} />
-        <MiniStat label="Total users" value={users.length} accent />
+        <MiniStat label="Unique clients" value={clients.size} accent />
       </div>
     </div>
   );

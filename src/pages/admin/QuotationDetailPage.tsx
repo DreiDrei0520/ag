@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, MessageSquareText } from 'lucide-react';
+import { ArrowLeft, Mail, MessageSquareText } from 'lucide-react';
 import { useQuotations, useSettings } from '../../hooks/useData';
 import { db } from '../../backend';
 import { useAuth } from '../../context/AuthContext';
-import { writeAuditLog, notifyUser } from '../../lib/activity';
+import { writeAuditLog } from '../../lib/activity';
 import { formatPHP, makeInquiryNumber } from '../../lib/format';
 import { Button, Card, EmptyState, PageLoader, Select, StatusBadge } from '../../components/ui';
 import QuotationResultView from '../../components/quotation/QuotationResultView';
@@ -53,17 +53,6 @@ export default function AdminQuotationDetail() {
     try {
       await db.quotations.update(quotation.id, { status: next });
       if (user) await writeAuditLog({ actor: user }, 'quotation_status_changed', 'quotation', quotation.id, { from: quotation.status, to: next });
-      if (quotation.clientId && (next === 'Approved' || next === 'Rejected')) {
-        await notifyUser({
-          userId: quotation.clientId,
-          audience: 'client',
-          title: `Quotation ${next.toLowerCase()}`,
-          message: `Your quotation ${quotation.quotationNumber} was marked ${next} by our team.`,
-          type: 'quotation',
-          referenceId: quotation.id,
-          link: `/client/quotations/${quotation.id}`,
-        });
-      }
       toast.success(`Status updated to ${next}`);
     } catch {
       toast.error('Unable to update the status.');
@@ -128,13 +117,14 @@ export default function AdminQuotationDetail() {
           <p><span className="text-agdark-400">Total:</span> <span className="font-mono-data font-semibold text-agorange">{formatPHP(quotation.totalEstimate)}</span></p>
         </div>
         <div className="mt-4 flex flex-wrap gap-2 border-t border-agdark-100 pt-4">
-          {quotation.clientId ? (
-            <Button variant="outline" onClick={createInquiry} loading={creating}>
-              Create inquiry for this client
-            </Button>
-          ) : (
-            <p className="text-xs text-agdark-400">This quotation was submitted as a guest. Follow up directly via email or phone.</p>
-          )}
+          {quotation.clientEmail ? (
+            <a
+              href={`mailto:${quotation.clientEmail}?subject=${encodeURIComponent(`Quotation ${quotation.quotationNumber} — ${quotation.status}`)}`}
+              className="btn-primary"
+            >
+              <Mail size={15} /> Email client
+            </a>
+          ) : null}
           <Button variant="outline" onClick={createInquiry} loading={creating}>
             <MessageSquareText size={15} /> Start discussion
           </Button>

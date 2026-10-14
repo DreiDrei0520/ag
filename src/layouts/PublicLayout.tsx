@@ -65,21 +65,13 @@ export default function PublicLayout() {
 
           <div className="hidden shrink-0 items-center gap-3 lg:flex">
             {user ? (
-              <Link
-                to={user.role === 'admin' ? '/admin/dashboard' : '/client/dashboard'}
-                className="btn-primary"
-              >
-                {user.role === 'admin' ? 'Admin Dashboard' : 'My Dashboard'}
+              <Link to="/admin/dashboard" className="btn-primary">
+                Admin Dashboard
               </Link>
             ) : (
-              <>
-                <Link to="/login" className="text-sm font-semibold text-agdark-700 hover:text-agorange">
-                  Log In
-                </Link>
-                <Link to="/register" className="btn-primary">
-                  Get Started
-                </Link>
-              </>
+              <Link to="/login" className="text-sm font-semibold text-agdark-700 hover:text-agorange">
+                Admin Login
+              </Link>
             )}
           </div>
 
@@ -109,18 +101,13 @@ export default function PublicLayout() {
               ))}
               <div className="mt-2 flex gap-2 border-t border-agdark-100 pt-3">
                 {user ? (
-                  <Link to={user.role === 'admin' ? '/admin/dashboard' : '/client/dashboard'} onClick={() => setOpen(false)} className="btn-primary flex-1">
-                    Dashboard
+                  <Link to="/admin/dashboard" onClick={() => setOpen(false)} className="btn-primary flex-1">
+                    Admin Dashboard
                   </Link>
                 ) : (
-                  <>
-                    <Link to="/login" onClick={() => setOpen(false)} className="btn-secondary flex-1">
-                      Log In
-                    </Link>
-                    <Link to="/register" onClick={() => setOpen(false)} className="btn-primary flex-1">
-                      Register
-                    </Link>
-                  </>
+                  <Link to="/login" onClick={() => setOpen(false)} className="btn-secondary flex-1">
+                    Admin Login
+                  </Link>
                 )}
               </div>
             </div>

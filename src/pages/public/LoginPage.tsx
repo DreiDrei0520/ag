@@ -23,7 +23,7 @@ export default function LoginPage() {
     try {
       await auth.login(email.trim(), password, remember);
       toast.success('Welcome back!');
-      navigate(from || '/', { replace: true });
+      navigate(from || '/admin/dashboard', { replace: true });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Unable to log in. Please try again.');
     } finally {
@@ -31,14 +31,9 @@ export default function LoginPage() {
     }
   };
 
-  const fillDemo = (role: 'admin' | 'client') => {
-    if (role === 'admin') {
-      setEmail('admin@agbuilders.ph');
-      setPassword('Admin123!');
-    } else {
-      setEmail('client@agbuilders.ph');
-      setPassword('Client123!');
-    }
+  const fillDemo = () => {
+    setEmail('admin@agbuilders.ph');
+    setPassword('Admin123!');
   };
 
   return (
@@ -56,8 +51,8 @@ export default function LoginPage() {
       <div className="relative z-10 flex flex-1 items-center justify-center px-4 pb-16">
         <div className="w-full max-w-md">
           <div className="rounded-2xl bg-white p-8 shadow-2xl">
-            <h1 className="font-display text-3xl font-extrabold uppercase tracking-wide text-agdark-800">Log in</h1>
-            <p className="mt-1 text-sm text-agdark-500">Access your dashboard and continue your projects.</p>
+            <h1 className="font-display text-3xl font-extrabold uppercase tracking-wide text-agdark-800">Admin login</h1>
+            <p className="mt-1 text-sm text-agdark-500">For AG Construction Builders administrators only.</p>
 
             <form onSubmit={onSubmit} className="mt-6 space-y-4">
               <label className="block">
@@ -88,13 +83,6 @@ export default function LoginPage() {
                 Log in
               </Button>
             </form>
-
-            <p className="mt-5 text-center text-sm text-agdark-500">
-              New here?{' '}
-              <Link to="/register" className="font-bold text-agorange hover:underline">
-                Create an account
-              </Link>
-            </p>
           </div>
 
           {isDemoMode ? (
@@ -102,13 +90,10 @@ export default function LoginPage() {
               <p className="flex items-center gap-1.5 font-semibold text-white">
                 <Info size={14} className="text-agorange" /> Demo mode
               </p>
-              <p className="mt-1.5">Quick-fill a demo account:</p>
+              <p className="mt-1.5">Quick-fill the demo admin account:</p>
               <div className="mt-2 flex gap-2">
-                <button onClick={() => fillDemo('admin')} className="rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold transition hover:bg-white/10">
+                <button onClick={fillDemo} className="rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold transition hover:bg-white/10">
                   Admin demo
-                </button>
-                <button onClick={() => fillDemo('client')} className="rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold transition hover:bg-white/10">
-                  Client demo
                 </button>
               </div>
             </div>

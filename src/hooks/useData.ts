@@ -124,8 +124,8 @@ export function useInquiryMessages(inquiryId: string) {
 
 export function useNotifications(userId: string, role?: AppUser['role']) {
   const { items, ...rest } = useItems<AppNotification>(
-    () => db.listNotificationsFor(userId, role ?? 'client'),
-    userId ? (cb) => db.subscribeNotifications(userId, role ?? 'client', cb) : undefined,
+    () => db.listNotificationsFor(userId, role ?? 'admin'),
+    userId ? (cb) => db.subscribeNotifications(userId, role ?? 'admin', cb) : undefined,
     [userId, role]
   );
   const unread = items.filter((n) => !n.isRead).length;

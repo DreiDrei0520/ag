@@ -16,13 +16,23 @@ const AuthContext = createContext<AuthContextValue>({
   refreshUser: () => {},
 });
 
+// The system has admin accounts only; sign out any non-admin session.
+function adminOnly(user: AppUser | null): AppUser | null {
+  if (user && user.role !== 'admin') {
+    void authApi.logout();
+    return null;
+  }
+  return user;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AppUser | null>(null);
   const [loading, setLoading] = useState(true);
   const latestUser = useRef<AppUser | null>(null);
 
   useEffect(() => {
-    const unsubscribe = authApi.subscribe((nextUser) => {
+    const unsubscribe = authApi.subscribe((rawUser) => {
+      const nextUser = adminOnly(rawUser);
       latestUser.current = nextUser;
       setUser(nextUser);
       setLoading(false);
@@ -32,7 +42,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     try {
-      const nextUser = await authApi.getCurrentUser();
+      const nextUser = adminOnly(await authApi.getCurrentUser());
       latestUser.current = nextUser;
       setUser(nextUser);
     } catch {
