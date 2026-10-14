@@ -45,7 +45,7 @@ export default function AboutPage() {
       <section className="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
         <div className="grid items-center gap-10 lg:grid-cols-2">
           <div className="overflow-hidden rounded-xl">
-            <img src="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1200&q=80" alt="Construction site" className="h-96 w-full object-cover" />
+            <img src="/projects/modern-bungalow-house/01-front.webp" alt="Modern bungalow house built by AG" className="h-96 w-full object-cover" />
           </div>
           <div>
             <h2 className="font-display text-3xl font-extrabold uppercase tracking-wide text-agdark-800">Who we are</h2>

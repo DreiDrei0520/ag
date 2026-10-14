@@ -21,9 +21,11 @@ export default function ProjectDetailPage() {
   const stats = [
     { label: 'Status', value: project.status, icon: CheckCircle2 },
     { label: 'Location', value: project.location, icon: MapPin },
-    { label: 'Area', value: `${project.area} m²`, icon: Ruler },
-    { label: 'Completed', value: formatDate(project.completionDate), icon: Calendar },
-  ];
+    { label: 'Area', value: project.area > 0 ? `${project.area} m²` : '', icon: Ruler },
+    { label: 'Completed', value: project.completionDate ? formatDate(project.completionDate) : '', icon: Calendar },
+  ].filter((s) => s.value);
+  // The featured image is already shown above, so leave it out of the gallery.
+  const gallery = project.images.filter((src) => src !== project.featuredImage);
 
   return (
     <div>
@@ -70,11 +72,11 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
-        {project.images.length > 0 && (
+        {gallery.length > 0 && (
           <div className="mt-12">
             <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-agdark-800">Gallery</h2>
             <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
-              {project.images.map((src, i) => (
+              {gallery.map((src, i) => (
                 <img key={src} src={src} alt={`${project.title} photo ${i + 1}`} className="h-44 w-full rounded-lg object-cover" />
               ))}
             </div>

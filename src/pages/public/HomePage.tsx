@@ -82,8 +82,8 @@ function Hero() {
         <div className="relative hidden lg:block">
           <div className="relative overflow-hidden rounded-2xl border border-white/10 shadow-2xl">
             <img
-              src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=1400&q=80"
-              alt="Construction site with cranes at dusk"
+              src="/projects/two-storey-wood-stone-residence/03-right-angle.webp"
+              alt="Two-storey residence with wood and stone accents under construction by AG"
               className="h-[520px] w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-agdark-900/70 via-transparent to-transparent" />
@@ -146,8 +146,8 @@ function About() {
           </div>
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <img src="https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=900&q=80" alt="Construction worker on site" className="h-64 w-full rounded-xl object-cover" />
-          <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&q=80" alt="Modern home exterior" className="mt-8 h-64 w-full rounded-xl object-cover" />
+          <img src="/projects/modern-two-storey-house/03-low-angle.webp" alt="Modern two-storey house built by AG" className="h-64 w-full rounded-xl object-cover" />
+          <img src="/projects/modern-bungalow-house/06-kitchen-living.webp" alt="Bungalow kitchen and living area built by AG" className="mt-8 h-64 w-full rounded-xl object-cover" />
         </div>
       </div>
     </section>
@@ -346,13 +346,13 @@ export default function HomePage() {
           <p className="mt-2 text-center text-sm text-agdark-500">All-in material and labor with supervision.</p>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {[
-              { img: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=900&q=80', pkg: FINISH_PACKAGES[0], text: 'Porcelain tiles and counter top, aluminum modular cabinet, flat ceiling, and painted wall accents.' },
-              { img: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&q=80', pkg: FINISH_PACKAGES[1], text: 'Wall tile and grooving accents, granite counter top, corner glass, glass stair railings, and high ceiling.' },
-              { img: 'https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=900&q=80', pkg: FINISH_PACKAGES[2], text: 'Stone accent, granite or quartz counter top, glass railings and bathroom partition, high ceiling, and landscape.' },
+              { img: '/finishes/standard.webp', pkg: FINISH_PACKAGES[0], text: 'Porcelain tiles and counter top, aluminum modular cabinet, flat ceiling, and painted wall accents.' },
+              { img: '/finishes/elegant.webp', pkg: FINISH_PACKAGES[1], text: 'Wall tile and grooving accents, granite counter top, corner glass, glass stair railings, and high ceiling.' },
+              { img: '/finishes/luxury.webp', pkg: FINISH_PACKAGES[2], text: 'Stone accent, granite or quartz counter top, glass railings and bathroom partition, high ceiling, and landscape.' },
             ].map(({ img, pkg, text }) => (
               <div key={pkg.name} className="overflow-hidden rounded-xl border border-agdark-100 bg-white shadow-card">
                 <div className="h-48 overflow-hidden">
-                  <img src={img} alt={pkg.shortName} className="h-full w-full object-cover" />
+                  <img src={img} alt={`${pkg.shortName} design render`} className="h-full w-full object-cover" />
                 </div>
                 <div className="p-5">
                   <h4 className="font-display text-lg font-bold uppercase tracking-wide text-agdark-800">{pkg.shortName}</h4>
@@ -403,7 +403,7 @@ export default function HomePage() {
                   <div className="p-5">
                     <h3 className="font-display text-xl font-bold uppercase tracking-wide text-agdark-800">{project.title}</h3>
                     <p className="mt-1.5 flex items-center gap-1.5 text-sm text-agdark-500">
-                      <Building2 size={14} /> {project.location}
+                      <Building2 size={14} /> {project.location || project.status}
                     </p>
                   </div>
                 </Link>

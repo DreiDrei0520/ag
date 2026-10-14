@@ -112,9 +112,9 @@ export default function ServicesPage() {
           </p>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {[
-              { img: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=900&q=80', name: 'Standard Finish', price: '₱28,000 / sqm', text: 'Quality, practical finishes for budget-conscious builds.' },
-              { img: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&q=80', name: 'Elegant Finish', price: '₱35,000 / sqm', text: 'Elevated finishes with premium tiles, fittings, and detailing.' },
-              { img: 'https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=900&q=80', name: 'Luxury Finish', price: '₱45,000 / sqm', text: 'Premium luxury finishes with high-end materials and fixtures.' },
+              { img: '/finishes/standard.webp', name: 'Standard Finish', price: '₱28,000 / sqm', text: 'Quality, practical finishes for budget-conscious builds.' },
+              { img: '/finishes/elegant.webp', name: 'Elegant Finish', price: '₱35,000 / sqm', text: 'Elevated finishes with premium tiles, fittings, and detailing.' },
+              { img: '/finishes/luxury.webp', name: 'Luxury Finish', price: '₱45,000 / sqm', text: 'Premium luxury finishes with high-end materials and fixtures.' },
             ].map((f) => (
               <div key={f.name} className="overflow-hidden rounded-xl border border-agdark-100 bg-white shadow-card">
                 <div className="h-52 overflow-hidden">

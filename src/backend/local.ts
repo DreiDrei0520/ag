@@ -76,12 +76,24 @@ function repairBrokenImages(store: LocalStore): boolean {
   return changed;
 }
 
+// Earlier builds seeded the portfolio with stock-photo placeholder projects (ids proj-1 … proj-8).
+// Swap those for the real seed projects, keeping any project an admin added.
+function replacePlaceholderProjects(store: LocalStore): boolean {
+  const isPlaceholder = (p: Project) => /^proj-\d+$/.test(p.id) && p.featuredImage.includes('images.unsplash.com');
+  if (!store.projects.some(isPlaceholder)) return false;
+  const kept = store.projects.filter((p) => !isPlaceholder(p));
+  const missing = seedData.projects.filter((s) => !kept.some((p) => p.id === s.id));
+  store.projects = [...clone(missing), ...kept];
+  return true;
+}
+
 function read(): LocalStore {
   try {
     const raw = localStorage.getItem(DB_KEY);
     if (raw) {
       const store = { ...defaultStore(), ...(JSON.parse(raw) as Partial<LocalStore>) } as LocalStore;
-      if (repairBrokenImages(store)) write(store);
+      const repaired = repairBrokenImages(store);
+      if (replacePlaceholderProjects(store) || repaired) write(store);
       return store;
     }
   } catch {

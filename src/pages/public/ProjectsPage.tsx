@@ -72,9 +72,13 @@ export default function ProjectsPage() {
                     {project.status}
                   </p>
                   <h3 className="mt-2 font-display text-xl font-bold uppercase tracking-wide text-white">{project.title}</h3>
-                  <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-agdark-200">
-                    <span className="text-agorange">{project.area}</span> m² · {project.location}
-                  </p>
+                  {project.area > 0 || project.location ? (
+                    <p className="mt-1 flex items-center gap-1.5 text-xs font-semibold text-agdark-200">
+                      {project.area > 0 ? <span><span className="text-agorange">{project.area}</span> m²</span> : null}
+                      {project.area > 0 && project.location ? ' · ' : null}
+                      {project.location}
+                    </p>
+                  ) : null}
                   <span className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-agorange">
                     View project <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
                   </span>
@@ -88,7 +92,7 @@ export default function ProjectsPage() {
       <section className="bg-agdark-50/50 py-16">
         <div className="mx-auto grid max-w-7xl items-center gap-8 px-4 sm:px-6 lg:grid-cols-2 lg:px-8">
           <div className="overflow-hidden rounded-xl">
-            <img src="https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80" alt="Transparent payment terms" className="h-80 w-full object-cover" />
+            <img src="/projects/modern-two-storey-house/02-side-angle.webp" alt="Modern two-storey house built by AG" className="h-80 w-full object-cover" />
           </div>
           <div>
             <p className="eyebrow">Transparent billing</p>
