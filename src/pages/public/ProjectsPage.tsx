@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Search } from 'lucide-react';
 import { useProjects, useProjectCategories } from '../../hooks/useData';
 import { EmptyState, Input, Skeleton } from '../../components/ui';
+import { PAYMENT_METHODS, PAYMENT_METHODS_NOTE, PROGRESS_BILLING } from '../../lib/companyInfo';
 
 export default function ProjectsPage() {
   const { projects, loading } = useProjects(true);
@@ -92,15 +93,24 @@ export default function ProjectsPage() {
           <div>
             <p className="eyebrow">Transparent billing</p>
             <h2 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-agdark-800">
-              Milestone-based payments, no surprises
+              Progress billing, no surprises
             </h2>
             <p className="mt-4 leading-7 text-agdark-600">
-              Every project runs on clear, milestone-based billing tied to verified construction
-              milestones — so you always know exactly what you're paying for and when. Combined with
-              the Master Plan Design Package and a 5-year warranty, AG Construction Builders delivers
-              full transparency from groundbreaking to turnover.
+              You pay in stages as the work is completed — for the safety and assurance of both you and
+              the contractor. We accept {PAYMENT_METHODS.join(', ').toLowerCase()} ({PAYMENT_METHODS_NOTE.toLowerCase()})
             </p>
-            <Link to="/quotation" className="btn-primary mt-6">Get a preliminary estimate <ArrowRight size={16} /></Link>
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+              {PROGRESS_BILLING.map((plan) => (
+                <div key={plan.scheme} className="rounded-lg border border-agdark-100 bg-white p-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-agdark-500">{plan.scheme}</p>
+                  <p className="mt-1 font-display text-lg font-bold text-agorange">{plan.stages.map((s) => s.pct).join(' / ')}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link to="/faq#payment" className="btn-primary">See payment terms <ArrowRight size={16} /></Link>
+              <Link to="/quotation" className="btn-secondary">Get a preliminary estimate</Link>
+            </div>
           </div>
         </div>
       </section>

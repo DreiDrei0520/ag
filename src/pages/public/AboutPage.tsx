@@ -1,5 +1,6 @@
-import { Award, Building2, HardHat, Target } from 'lucide-react';
+import { Award, BadgeCheck, Building2, GraduationCap, HardHat, MapPin, Target } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { CONTRACTOR_PERMITS, CONTRACTOR_TRAININGS, MAIN_OFFICE_ADDRESS } from '../../lib/companyInfo';
 
 const values = [
   {
@@ -36,7 +37,7 @@ export default function AboutPage() {
           </h1>
           <p className="mt-4 max-w-xl text-agdark-200">
             A full-service design and construction company covering CALABARZON and NCR — from free site
-            visits and design to groundbreaking, construction, and turnover, with a 5-year warranty.
+            visits and design to groundbreaking, construction, and turnover, with a 5-year structural warranty.
           </p>
         </div>
       </section>
@@ -59,13 +60,43 @@ export default function AboutPage() {
               {[
                 { value: '120+', label: 'Projects completed' },
                 { value: '98%', label: 'Client satisfaction' },
-                { value: '5-Yr', label: 'Build warranty' },
+                { value: '5-Yr', label: 'Structural warranty' },
               ].map((s) => (
                 <div key={s.label} className="rounded-xl bg-agdark-800 p-4 text-center">
                   <p className="font-display text-2xl font-extrabold text-agorange">{s.value}</p>
                   <p className="mt-1 text-[11px] font-semibold uppercase tracking-widest text-agdark-300">{s.label}</p>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-agdark-50/50 py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <p className="eyebrow">Contractor's profile</p>
+          <h2 className="mt-3 font-display text-3xl font-extrabold uppercase tracking-wide text-agdark-800">Licensed, permitted, and safety-trained</h2>
+          <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_1.3fr_0.9fr]">
+            <div className="rounded-xl border border-agdark-100 bg-white p-6">
+              <BadgeCheck size={22} className="text-agorange" />
+              <h3 className="mt-3 font-display text-lg font-bold uppercase tracking-wide text-agdark-800">Contractor's permits</h3>
+              <ul className="mt-3 space-y-1.5 text-sm text-agdark-600">
+                {CONTRACTOR_PERMITS.map((p) => <li key={p}>{p}</li>)}
+              </ul>
+            </div>
+            <div className="rounded-xl border border-agdark-100 bg-white p-6">
+              <GraduationCap size={22} className="text-agorange" />
+              <h3 className="mt-3 font-display text-lg font-bold uppercase tracking-wide text-agdark-800">Training</h3>
+              <ul className="mt-3 space-y-1.5 text-sm text-agdark-600">
+                {CONTRACTOR_TRAININGS.map((t) => <li key={t}>{t}</li>)}
+              </ul>
+            </div>
+            <div className="rounded-xl bg-agdark-800 p-6">
+              <MapPin size={22} className="text-agorange" />
+              <h3 className="mt-3 font-display text-lg font-bold uppercase tracking-wide text-white">Main office</h3>
+              <p className="mt-3 text-sm leading-6 text-agdark-200">{MAIN_OFFICE_ADDRESS}</p>
+              <p className="mt-2 text-sm text-agdark-200">agconbuilder@gmail.com</p>
+              <p className="text-sm text-agdark-200">AG Construction Builders on Facebook</p>
             </div>
           </div>
         </div>

@@ -46,11 +46,11 @@ export const DEFAULT_SETTINGS = {
   companyName: 'AG Construction Builders',
   companyTagline: 'Build Your Vision, Simplified',
   companyDescription:
-    'A full-service design and construction company serving CALABARZON and NCR — from free site visits, design and planning, to ground-breaking and turnover, with a 5-year warranty.',
+    'A full-service design and construction company serving CALABARZON and NCR — from free site visits, design and planning, to ground-breaking and turnover, with a 5-year structural warranty.',
   logoUrl: '',
   email: 'agconbuilder@gmail.com',
   phone: '0927-837-2757',
-  address: 'Main Office: Los Baños, Laguna',
+  address: 'Main Office: 11912 Villanueva St., Brgy. Mayondon, Los Baños, Laguna',
   businessHours: 'Mon – Sat, 8:00 AM – 5:00 PM',
   facebook: 'https://facebook.com/agconbuilder',
   instagram: 'https://instagram.com/agconbuilder',

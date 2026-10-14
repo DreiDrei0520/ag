@@ -17,6 +17,7 @@ import {
 import { useServices, useProjects, useSettings } from '../../hooks/useData';
 import { formatPHP } from '../../lib/format';
 import { Card, Skeleton } from '../../components/ui';
+import { DESIGN_PACKAGE, FINISH_PACKAGES } from '../../lib/companyInfo';
 
 const TICKER_ITEMS = [
   '120+ Projects Delivered',
@@ -24,10 +25,12 @@ const TICKER_ITEMS = [
   'CALABARZON & NCR Coverage',
   'Engineer-Supervised Builds',
   'Transparent Milestone Billing',
-  'PhilGEPS Accredited',
+  'PCAB Licensed',
+  'PhilGEPS Red Registered',
+  'Cash, Bank & Pag-IBIG Financing',
   '24hr Response Time',
   'FREE Site Visit',
-  '5-Year Warranty',
+  '5-Year Structural Warranty',
 ];
 
 function Hero() {
@@ -127,9 +130,9 @@ function About() {
           </p>
           <div className="mt-8 grid gap-4 sm:grid-cols-2">
             {[
-              { icon: <ShieldCheck size={20} />, title: 'Licensed & Accredited', text: 'PhilGEPS-accredited with compliant delivery for public and private clients.' },
+              { icon: <ShieldCheck size={20} />, title: 'Licensed & Registered', text: 'PCAB-licensed and PhilGEPS Red registered, with complete business permits.' },
               { icon: <Hammer size={20} />, title: 'Engineer-Supervised', text: 'Every build overseen by qualified engineers at every milestone.' },
-              { icon: <ClipboardCheck size={20} />, title: 'Transparent Milestones', text: 'Clear billing tied to verified project milestones — no surprises.' },
+              { icon: <ClipboardCheck size={20} />, title: 'Transparent Milestones', text: 'Progress billing tied to completed work, for cash, bank loan, and Pag-IBIG.' },
               { icon: <MessageSquareText size={20} />, title: 'Client-First Support', text: 'A dedicated point of contact and response within 24 hours.' },
             ].map((f) => (
               <div key={f.title} className="flex gap-3 rounded-xl border border-agdark-100 bg-white p-4">
@@ -216,13 +219,13 @@ export default function HomePage() {
         <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {[
             { step: '01', title: 'Free Site Visit', text: 'Our team visits your site for FREE anywhere in CALABARZON and NCR to assess the property and discuss your vision.' },
-            { step: '02', title: 'Design & Planning', text: 'Design options, plans, and a complete Master Plan Design Package — signed and sealed by engineers within one week.' },
-            { step: '03', title: 'Contract Signing', text: 'Clear scope, milestone-based pricing, and transparent terms agreed before work begins.' },
+            { step: '02', title: 'Design & Planning', text: 'Two design options and a complete Master Plan — signed and sealed by engineers in 5–7 days.' },
+            { step: '03', title: 'Costing & Contract', text: 'Approve the plan, review the costing proposal, and sign a contract with clear progress-billing terms.' },
             { step: '04', title: 'Building Permit', text: 'We process building permits and clearances for you, end-to-end.' },
             { step: '05', title: 'Ground Breaking', text: 'Site preparation and excavation kick off the construction phase.' },
             { step: '06', title: 'Construction Phase', text: 'Engineer-supervised execution with transparent milestone billing and progress reports.' },
-            { step: '07', title: 'Turn-Over', text: 'Final inspection, punch-list resolution, and handover of complete documentation.' },
-            { step: '08', title: '5-Year Warranty', text: 'Every completed build is backed by a 5-year warranty for lasting peace of mind.' },
+            { step: '07', title: 'Turnover', text: 'Punch-list inspection and fixes, then turnover of your home with a certificate.' },
+            { step: '08', title: 'Warranty', text: '5-year structural warranty and 1-month finishing warranty on private projects.' },
           ].map((s) => (
             <div key={s.step} className="relative rounded-xl border border-agdark-100 bg-white p-6 shadow-card">
               <span className="font-display text-5xl font-extrabold text-agorange-100">{s.step}</span>
@@ -231,6 +234,9 @@ export default function HomePage() {
             </div>
           ))}
         </div>
+        <Link to="/faq#process" className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-agorange hover:text-agorange-600">
+          Payment terms, timelines, and requirements <ArrowRight size={16} />
+        </Link>
       </section>
 
       {/* Smart quotation CTA */}
@@ -305,22 +311,27 @@ export default function HomePage() {
               A complete design package that covers everything you need to build with confidence:
               2D plans, structural, architectural, electrical, plumbing and sanitary documents, plus 3D
               interior and exterior design — all signed and sealed by licensed engineers, delivered in soft
-              and hard copies. Includes 3 design options and unlimited revisions, within one week.
+              copy and A3 hard copy. Includes 2 design options, ready in 5–7 days. Every plan is original,
+              drawn from your title, lot plan, and our site-visit measurements.
             </p>
             <ul className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
                 '2D & 3D plans',
                 'Structural, Electrical, Plumbing, Sanitary',
-                '3 design options',
-                'Unlimited revisions',
+                '2 design options',
+                '5–7 days process',
                 'Signed and sealed by engineers',
-                'Soft and hard copies',
+                'Soft copy and A3 hard copy',
               ].map((f) => (
                 <li key={f} className="flex items-center gap-2 text-sm text-agdark-600">
                   <CheckCircle2 size={16} className="shrink-0 text-agorange" /> {f}
                 </li>
               ))}
             </ul>
+            <p className="mt-6 text-sm text-agdark-500">
+              Need only part of it?{' '}
+              {DESIGN_PACKAGE.alaCarte.map((o) => `${o.label} ${formatPHP(o.price)}`).join(' · ')}
+            </p>
             <Link to="/services/master-plan-design-package" className="btn-primary mt-8">
               Learn more about the design package <ArrowRight size={16} />
             </Link>
@@ -332,24 +343,30 @@ export default function HomePage() {
           <h3 className="mt-3 text-center font-display text-3xl font-bold uppercase tracking-wide text-agdark-800">
             Choose your finish — per square meter
           </h3>
+          <p className="mt-2 text-center text-sm text-agdark-500">All-in material and labor with supervision.</p>
           <div className="mt-10 grid gap-6 md:grid-cols-3">
             {[
-              { img: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=900&q=80', name: 'Standard Finish', price: '₱28,000 / sqm', text: 'Quality, practical finishes for budget-conscious builds.' },
-              { img: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&q=80', name: 'Elegant Finish', price: '₱35,000 / sqm', text: 'Elevated finishes with premium tiles, fittings, and detailing.' },
-              { img: 'https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=900&q=80', name: 'Luxury Finish', price: '₱45,000 / sqm', text: 'Premium luxury finishes with high-end materials and fixtures.' },
-            ].map((f) => (
-              <div key={f.name} className="overflow-hidden rounded-xl border border-agdark-100 bg-white shadow-card">
+              { img: 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?w=900&q=80', pkg: FINISH_PACKAGES[0], text: 'Porcelain tiles and counter top, aluminum modular cabinet, flat ceiling, and painted wall accents.' },
+              { img: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&q=80', pkg: FINISH_PACKAGES[1], text: 'Wall tile and grooving accents, granite counter top, corner glass, glass stair railings, and high ceiling.' },
+              { img: 'https://images.unsplash.com/photo-1493663284031-b7e3aefcae8e?w=900&q=80', pkg: FINISH_PACKAGES[2], text: 'Stone accent, granite or quartz counter top, glass railings and bathroom partition, high ceiling, and landscape.' },
+            ].map(({ img, pkg, text }) => (
+              <div key={pkg.name} className="overflow-hidden rounded-xl border border-agdark-100 bg-white shadow-card">
                 <div className="h-48 overflow-hidden">
-                  <img src={f.img} alt={f.name} className="h-full w-full object-cover" />
+                  <img src={img} alt={pkg.shortName} className="h-full w-full object-cover" />
                 </div>
                 <div className="p-5">
-                  <h4 className="font-display text-lg font-bold uppercase tracking-wide text-agdark-800">{f.name}</h4>
-                  <p className="mt-1 font-display text-lg font-bold text-agorange">{f.price}</p>
-                  <p className="mt-2 text-sm text-agdark-500">{f.text}</p>
+                  <h4 className="font-display text-lg font-bold uppercase tracking-wide text-agdark-800">{pkg.shortName}</h4>
+                  <p className="mt-1 font-display text-lg font-bold text-agorange">{formatPHP(pkg.pricePerSqm)} / sqm</p>
+                  <p className="mt-2 text-sm text-agdark-500">{text}</p>
                 </div>
               </div>
             ))}
           </div>
+          <p className="mt-6 text-center">
+            <Link to="/faq#packages" className="inline-flex items-center gap-2 text-sm font-bold text-agorange hover:text-agorange-600">
+              See full inclusions and exclusions <ArrowRight size={16} />
+            </Link>
+          </p>
         </div>
       </section>
 

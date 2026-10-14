@@ -23,6 +23,7 @@ const navLinks = [
   { to: '/projects', label: 'Projects' },
   { to: '/quotation', label: 'Smart Quotation' },
   { to: '/announcements', label: 'Announcements' },
+  { to: '/faq', label: 'FAQs' },
   { to: '/contact', label: 'Contact' },
 ];
 
@@ -130,13 +131,14 @@ export default function PublicLayout() {
                 <li><Link to="/services" className="hover:text-agorange">Services</Link></li>
                 <li><Link to="/projects" className="hover:text-agorange">Projects</Link></li>
                 <li><Link to="/quotation" className="hover:text-agorange">Smart Quotation</Link></li>
+                <li><Link to="/faq" className="hover:text-agorange">FAQs & Requirements</Link></li>
                 <li><Link to="/contact" className="hover:text-agorange">Contact</Link></li>
               </ul>
             </div>
             <div>
               <h4 className="font-display text-sm font-bold uppercase tracking-widest text-white">Contact</h4>
               <ul className="mt-3 space-y-2 text-sm">
-                <li>{settings?.address ?? 'Main Office: Los Baños, Laguna'}</li>
+                <li>{settings?.address ?? 'Main Office: 11912 Villanueva St., Brgy. Mayondon, Los Baños, Laguna'}</li>
                 <li>{settings?.email ?? 'agconbuilder@gmail.com'}</li>
                 <li>{settings?.phone ?? '0927-837-2757'}</li>
               </ul>

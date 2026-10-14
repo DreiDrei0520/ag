@@ -15,6 +15,7 @@ import QuotationPage from './pages/public/QuotationPage';
 import AnnouncementsPage from './pages/public/AnnouncementsPage';
 import AboutPage from './pages/public/AboutPage';
 import ContactPage from './pages/public/ContactPage';
+import FaqPage from './pages/public/FaqPage';
 import LoginPage from './pages/public/LoginPage';
 import ForgotPasswordPage from './pages/public/ForgotPasswordPage';
 
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/quotation" element={<QuotationPage />} />
           <Route path="/announcements" element={<AnnouncementsPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/faq" element={<FaqPage />} />
           <Route path="/contact" element={<ContactPage />} />
         </Route>
 

@@ -4,6 +4,7 @@ import { Facebook, Linkedin, Mail, MapPin, MessageSquare, Phone } from 'lucide-r
 import { Card } from '../../components/ui';
 import { notifyAdmins } from '../../lib/activity';
 import { writeAuditLog } from '../../lib/activity';
+import { MAIN_OFFICE_ADDRESS } from '../../lib/companyInfo';
 
 export default function ContactPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', subject: 'General inquiry', message: '' });
@@ -37,7 +38,7 @@ export default function ContactPage() {
   const channels = [
     { icon: Phone, title: 'Call us', lines: ['0927-837-2757', '0926-775-2251'] },
     { icon: Mail, title: 'Email us', lines: ['agconbuilder@gmail.com'] },
-    { icon: MapPin, title: 'Visit us', lines: ['Main Office: Los Baños, Laguna', 'Serving CALABARZON & NCR'] },
+    { icon: MapPin, title: 'Visit us', lines: [MAIN_OFFICE_ADDRESS, 'Serving CALABARZON & NCR'] },
   ];
 
   return (
