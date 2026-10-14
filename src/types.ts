@@ -43,6 +43,8 @@ export interface Service extends Timestamped {
   shortDescription: string;
   description: string;
   imageUrl: string;
+  /** Extra photos shown on the service's detail page, in order. */
+  gallery?: string[];
   features: string[];
   inclusions: string[];
   startingPrice: number;

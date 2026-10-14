@@ -7,6 +7,7 @@ import { db } from '../../backend';
 import { formatPHP, slugify } from '../../lib/format';
 import { writeAuditLog } from '../../lib/activity';
 import { useAuth } from '../../context/AuthContext';
+import { GalleryField, ImageField } from '../../components/shared/ImageUpload';
 import {
   Badge, Button, ConfirmDialog, EmptyState, Field, Input, Modal, SearchInput, Select,
   StatusBadge, Table, THead, TH, TR, TD, SectionHeader, Textarea, Checkbox,
@@ -20,7 +21,8 @@ const emptyService: Omit<Service, 'id' | 'createdAt' | 'updatedAt'> = {
   categoryId: '',
   shortDescription: '',
   description: '',
-  imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1200&q=80',
+  imageUrl: '',
+  gallery: [],
   features: [],
   inclusions: [],
   startingPrice: 0,
@@ -72,6 +74,7 @@ export default function AdminServices() {
       shortDescription: service.shortDescription,
       description: service.description,
       imageUrl: service.imageUrl,
+      gallery: service.gallery ?? [],
       features: service.features,
       inclusions: service.inclusions,
       startingPrice: service.startingPrice,
@@ -98,6 +101,10 @@ export default function AdminServices() {
       toast.error('Title and category are required.');
       return;
     }
+    if (!form.imageUrl) {
+      toast.error('Add a cover image for the service.');
+      return;
+    }
     setSaving(true);
     try {
       const payload = { ...form, slug: form.slug || slugify(form.title) };
@@ -111,8 +118,8 @@ export default function AdminServices() {
         toast.success('Service created');
       }
       setFormOpen(false);
-    } catch {
-      toast.error('Unable to save the service.');
+    } catch (err) {
+      toast.error(err instanceof Error && err.message ? err.message : 'Unable to save the service.');
     } finally {
       setSaving(false);
     }
@@ -230,8 +237,11 @@ export default function AdminServices() {
           <Field label="Full description" className="sm:col-span-2">
             <Textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Field>
-          <Field label="Image URL" className="sm:col-span-2">
-            <Input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
+          <Field label="Cover image" required hint="Shown on service cards and at the top of the service page." className="sm:col-span-2">
+            <ImageField folder="services" value={form.imageUrl} onChange={(imageUrl) => setForm((f) => ({ ...f, imageUrl }))} />
+          </Field>
+          <Field label="Gallery" hint="Extra photos shown on the service page. Use the arrows to reorder." className="sm:col-span-2">
+            <GalleryField folder="services" value={form.gallery ?? []} onChange={(gallery) => setForm((f) => ({ ...f, gallery }))} />
           </Field>
           <Field label="Features (comma separated)" className="sm:col-span-2">
             <Input value={form.features.join(', ')} onChange={(e) => setForm({ ...form, features: e.target.value.split(',').map((s) => s.trim()).filter(Boolean) })} />

@@ -107,6 +107,7 @@ function refreshSeededServices(store: LocalStore): boolean {
     if (s.id === 'svc-design-package' && s.features.includes('3 design options')) {
       next = { ...next, description: seed.description, features: [...seed.features], inclusions: [...seed.inclusions] };
     }
+    if (s.gallery === undefined && seed.gallery) next = { ...next, gallery: [...seed.gallery] };
     if (next !== s) changed = true;
     return next;
   });
@@ -131,18 +132,22 @@ function read(): LocalStore {
   return store;
 }
 
-function write(store: LocalStore) {
+function write(store: LocalStore): boolean {
   try {
     localStorage.setItem(DB_KEY, JSON.stringify(store));
+    return true;
   } catch {
     /* storage may be full in demo mode */
+    return false;
   }
 }
 
 function mutate(fn: (store: LocalStore) => void, key: StoreKey) {
   const store = read();
   fn(store);
-  write(store);
+  // Surface a full browser storage (e.g. too many uploaded photos in demo mode) instead of
+  // reporting a save that silently didn't happen.
+  if (!write(store)) throw new Error('Browser storage is full. Remove some images and try again.');
   window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: key }));
 }
 
@@ -396,21 +401,13 @@ export const localAuth = {
 
 // ---------- uploads (demo) ----------
 
-export async function localUploadAttachment(path: string, file: File): Promise<string> {
+// Demo mode has no file storage, so the file is inlined as a data URL and saved with the record
+// that references it.
+export async function localUploadAttachment(_path: string, file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('Unable to read file'));
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      try {
-        const map = JSON.parse(localStorage.getItem('ag_uploads') || '{}') as Record<string, string>;
-        map[path] = dataUrl;
-        localStorage.setItem('ag_uploads', JSON.stringify(map));
-        resolve(dataUrl);
-      } catch {
-        resolve(URL.createObjectURL(file));
-      }
-    };
+    reader.onload = () => resolve(reader.result as string);
     reader.readAsDataURL(file);
   });
 }

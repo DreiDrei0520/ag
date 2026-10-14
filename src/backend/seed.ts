@@ -255,6 +255,7 @@ export const seedServices: Service[] = [
     description:
       'A complete design and planning package for your build — 2D floor plans, structural, architectural, electrical, plumbing and sanitary plans, plus 3D interior and exterior design. All plans are signed and sealed by licensed engineers, delivered in both soft and hard copies. Includes 2 design options, delivered in 5–7 days. Every plan is original — based on your title, lot plan, and lot measurements taken during the site visit, never a template. Partial packages: Master Plan only (2D) ₱30,000, 3D design only ₱25,000, Master Plan signed and sealed only ₱40,000.',
     imageUrl: '/design/3d-exterior.webp',
+    gallery: ['/design/3d-living-room.webp', '/design/3d-outdoor-lounge.webp', '/design/2d-plan-sheet.webp', '/design/2d-floor-plan.webp'],
     features: ['Signed and sealed plans', '2 design options', '5–7 days process', 'Original plan, not a template'],
     inclusions: ['2D & 3D plans', 'Structural, Architectural, Electrical, Plumbing, Sanitary', 'Soft copy and A3 hard copy', 'Signed and sealed by engineers'],
     startingPrice: 60000,

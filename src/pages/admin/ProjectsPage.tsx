@@ -6,6 +6,7 @@ import { db } from '../../backend';
 import { slugify } from '../../lib/format';
 import { writeAuditLog } from '../../lib/activity';
 import { useAuth } from '../../context/AuthContext';
+import { GalleryField, ImageField } from '../../components/shared/ImageUpload';
 import { Badge, Button, Checkbox, ConfirmDialog, EmptyState, Field, Input, Modal, SearchInput, Select, StatusBadge, Table, THead, TH, TR, TD, SectionHeader, Textarea } from '../../components/ui';
 import type { Project, ProjectStatus } from '../../types';
 
@@ -18,7 +19,7 @@ const emptyProject: Omit<Project, 'id' | 'createdAt' | 'updatedAt'> = {
   location: '',
   description: '',
   images: [],
-  featuredImage: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1200&q=80',
+  featuredImage: '',
   servicesUsed: [],
   status: 'Upcoming',
   area: 0,
@@ -66,6 +67,10 @@ export default function AdminProjects() {
       toast.error('Title and category are required.');
       return;
     }
+    if (!form.featuredImage) {
+      toast.error('Add a cover image for the project.');
+      return;
+    }
     setSaving(true);
     try {
       const payload = { ...form, slug: form.slug || slugify(form.title) };
@@ -79,8 +84,8 @@ export default function AdminProjects() {
         toast.success('Project created');
       }
       setFormOpen(false);
-    } catch {
-      toast.error('Unable to save the project.');
+    } catch (err) {
+      toast.error(err instanceof Error && err.message ? err.message : 'Unable to save the project.');
     } finally {
       setSaving(false);
     }
@@ -200,11 +205,11 @@ export default function AdminProjects() {
           <Field label="Description" className="sm:col-span-2">
             <Textarea rows={3} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
           </Field>
-          <Field label="Cover image URL" className="sm:col-span-2">
-            <Input value={form.featuredImage} onChange={(e) => setForm({ ...form, featuredImage: e.target.value })} />
+          <Field label="Cover image" required hint="Shown on project cards and at the top of the project page." className="sm:col-span-2">
+            <ImageField folder="projects" value={form.featuredImage} onChange={(featuredImage) => setForm((f) => ({ ...f, featuredImage }))} />
           </Field>
-          <Field label="Gallery images (one per line)" className="sm:col-span-2">
-            <Textarea rows={3} value={form.images.join('\n')} onChange={(e) => setForm({ ...form, images: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })} />
+          <Field label="Gallery" hint="More photos of the project. Use the arrows to reorder." className="sm:col-span-2">
+            <GalleryField folder="projects" value={form.images} onChange={(images) => setForm((f) => ({ ...f, images }))} />
           </Field>
           <Field label="Highlights (one per line)" className="sm:col-span-2">
             <Textarea rows={3} value={form.highlights.join('\n')} onChange={(e) => setForm({ ...form, highlights: e.target.value.split('\n').map((s) => s.trim()).filter(Boolean) })} />

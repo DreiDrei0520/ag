@@ -52,29 +52,12 @@ export default function ServiceDetailPage() {
               </div>
             </div>
 
-            {service.slug === 'master-plan-design-package' && (
+            {service.gallery && service.gallery.length > 0 && (
               <div>
-                <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-agdark-800">3D design preview</h2>
+                <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-agdark-800">Gallery</h2>
                 <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  {[
-                    { src: '/design/3d-living-room.webp', alt: '3D perspective of a living room interior' },
-                    { src: '/design/3d-outdoor-lounge.webp', alt: '3D perspective of an outdoor lounge and pool' },
-                  ].map((img) => (
-                    <img key={img.src} src={img.src} alt={img.alt} className="h-56 w-full rounded-xl object-cover" />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {service.slug === 'master-plan-design-package' && (
-              <div>
-                <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-agdark-800">Signed and sealed documents</h2>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  {[
-                    { src: '/design/2d-plan-sheet.webp', alt: 'Plan sheet with perspective, vicinity map, and site development plan' },
-                    { src: '/design/2d-floor-plan.webp', alt: 'Ground and second floor plans' },
-                  ].map((img) => (
-                    <img key={img.src} src={img.src} alt={img.alt} className="h-56 w-full rounded-xl border border-agdark-100 bg-white object-contain p-2" />
+                  {service.gallery.map((src, i) => (
+                    <img key={src} src={src} alt={`${service.title} photo ${i + 1}`} className="h-56 w-full rounded-xl border border-agdark-100 bg-agdark-50 object-contain" />
                   ))}
                 </div>
               </div>
