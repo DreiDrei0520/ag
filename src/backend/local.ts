@@ -114,6 +114,17 @@ function refreshSeededServices(store: LocalStore): boolean {
   return changed;
 }
 
+// The seeded admin account used a placeholder address; move stores that still have it to the real one.
+const PREVIOUS_ADMIN_EMAIL = 'admin@agbuilders.ph';
+
+function updateSeededAdminEmail(store: LocalStore): boolean {
+  const seedAdmin = seedData.users.find((u) => u.uid === 'admin-1');
+  const admin = store.users.find((u) => u.uid === 'admin-1');
+  if (!seedAdmin || !admin || admin.email !== PREVIOUS_ADMIN_EMAIL) return false;
+  admin.email = seedAdmin.email;
+  return true;
+}
+
 function read(): LocalStore {
   try {
     const raw = localStorage.getItem(DB_KEY);
@@ -121,7 +132,8 @@ function read(): LocalStore {
       const store = { ...defaultStore(), ...(JSON.parse(raw) as Partial<LocalStore>) } as LocalStore;
       const repaired = repairBrokenImages(store);
       const refreshed = refreshSeededServices(store);
-      if (replacePlaceholderProjects(store) || repaired || refreshed) write(store);
+      const emailUpdated = updateSeededAdminEmail(store);
+      if (replacePlaceholderProjects(store) || repaired || refreshed || emailUpdated) write(store);
       return store;
     }
   } catch {
@@ -277,8 +289,10 @@ function readAuthMap(): Record<string, string> {
   }
 }
 
+// Give the seeded admin its initial password only once, so a password the admin changes sticks.
 function seedAuthMap() {
   const map = readAuthMap();
+  if (map['admin-1']) return;
   map['admin-1'] = btoa('Admin123!');
   localStorage.setItem(AUTH_KEY, JSON.stringify(map));
 }

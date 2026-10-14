@@ -24,7 +24,7 @@ export const seedUsers: AppUser[] = [
   {
     uid: 'admin-1',
     fullName: 'Alyssa Grace Reyes',
-    email: 'admin@agbuilders.ph',
+    email: 'aceattacker028@gmail.com',
     role: 'admin',
     phone: '0927-837-2757',
     address: 'Los Baños, Laguna',

@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { ArrowLeft, Eye, EyeOff, Info } from 'lucide-react';
-import { auth, isDemoMode } from '../../backend';
+import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { auth } from '../../backend';
 import { Button, Input } from '../../components/ui';
 import { Logo } from '../../layouts/PublicLayout';
 
@@ -29,11 +29,6 @@ export default function LoginPage() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillDemo = () => {
-    setEmail('admin@agbuilders.ph');
-    setPassword('Admin123!');
   };
 
   return (
@@ -84,20 +79,6 @@ export default function LoginPage() {
               </Button>
             </form>
           </div>
-
-          {isDemoMode ? (
-            <div className="mt-4 rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-agdark-200">
-              <p className="flex items-center gap-1.5 font-semibold text-white">
-                <Info size={14} className="text-agorange" /> Demo mode
-              </p>
-              <p className="mt-1.5">Quick-fill the demo admin account:</p>
-              <div className="mt-2 flex gap-2">
-                <button onClick={fillDemo} className="rounded-lg border border-white/20 px-3 py-1.5 text-xs font-semibold transition hover:bg-white/10">
-                  Admin demo
-                </button>
-              </div>
-            </div>
-          ) : null}
         </div>
       </div>
     </div>
