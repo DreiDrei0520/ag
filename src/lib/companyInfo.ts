@@ -267,3 +267,15 @@ export const CONTRACTOR_TRAININGS = [
   'Construction Standard First Aid Training for office and construction employees',
   'First Aid Training by MDRRMO',
 ];
+
+export const CONSTRUCTION_SERVICES = [
+  { name: 'Vertical Construction', detail: 'Building structures that extend upward — bungalow, 2-storey and up, fence and gate, etc.' },
+  { name: 'Horizontal Construction', detail: 'Structures extending across a flat plane — road, drainage system, highway, bridge, railways, pipelines.' },
+];
+
+export const SERVICES_OFFERED = [
+  'Design Package',
+  'Construction of residential, commercial building, resort, etc.',
+  'Renovation and extension works',
+  'Complete building permit assistance',
+];

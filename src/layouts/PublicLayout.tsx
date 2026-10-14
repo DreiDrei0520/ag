@@ -4,6 +4,7 @@ import { Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/cn';
 import { useSettings } from '../hooks/useData';
+import ChatAssistant from '../components/shared/ChatAssistant';
 
 export function Logo({ dark = false, size = 'md' }: { dark?: boolean; size?: 'sm' | 'md' | 'lg' }) {
   const heights = { sm: 'h-10', md: 'h-14', lg: 'h-16' };
@@ -150,6 +151,8 @@ export default function PublicLayout() {
           </div>
         </div>
       </footer>
+
+      <ChatAssistant />
     </div>
   );
 }
