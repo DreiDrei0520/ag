@@ -1,22 +1,18 @@
 import React, { useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
-import { HardHat, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/cn';
 import { useSettings } from '../hooks/useData';
 
 export function Logo({ dark = false, size = 'md' }: { dark?: boolean; size?: 'sm' | 'md' | 'lg' }) {
-  const sizes = { sm: 'h-8 w-8', md: 'h-9 w-9', lg: 'h-11 w-11' };
-  const textSizes = { sm: 'text-base', md: 'text-lg', lg: 'text-xl' };
+  const heights = { sm: 'h-10', md: 'h-14', lg: 'h-16' };
   return (
-    <span className="flex items-center gap-2">
-      <span className={cn('flex items-center justify-center rounded-lg bg-agorange text-white', sizes[size])}>
-        <HardHat size={size === 'lg' ? 22 : 17} />
-      </span>
-      <span className={cn('font-display font-bold uppercase tracking-wide', textSizes[size], dark ? 'text-white' : 'text-agdark-800')}>
-        AG <span className="text-agorange">Construction</span>
-      </span>
-    </span>
+    <img
+      src={dark ? '/logo-white.png' : '/logo.png'}
+      alt="AG Construction Builders"
+      className={cn('w-auto shrink-0', heights[size])}
+    />
   );
 }
 
