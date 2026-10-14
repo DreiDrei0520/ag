@@ -299,8 +299,8 @@ export default function HomePage() {
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div className="grid grid-cols-2 gap-4">
-            <img src="https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=900&q=80" alt="Master plan design package" className="h-64 w-full rounded-xl object-cover" />
-            <img src="https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=900&q=80" alt="Design documents signed and sealed" className="mt-8 h-64 w-full rounded-xl object-cover" />
+            <img src="/design/2d-floor-plan.webp" alt="Ground and second floor plans from a master plan" className="h-64 w-full rounded-xl border border-agdark-100 bg-white object-contain p-2" />
+            <img src="/design/3d-living-room.webp" alt="3D perspective of a living room interior" className="mt-8 h-64 w-full rounded-xl object-cover" />
           </div>
           <div>
             <p className="eyebrow">Design & Planning</p>

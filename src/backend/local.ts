@@ -87,13 +87,40 @@ function replacePlaceholderProjects(store: LocalStore): boolean {
   return true;
 }
 
+// Seeded services that still carry an outdated stock photo or design-package copy get the
+// current seed values. Anything an admin has since edited is left alone.
+const OUTDATED_SERVICE_IMAGES: Record<string, string> = {
+  'svc-ground-zero': 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1200&q=80',
+  'svc-fence': 'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=1200&q=80',
+  'svc-private': 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&q=80',
+  'svc-vertical': 'https://images.unsplash.com/photo-1541976590-713941681591?w=1200&q=80',
+  'svc-design-package': 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=1200&q=80',
+};
+
+function refreshSeededServices(store: LocalStore): boolean {
+  let changed = false;
+  store.services = store.services.map((s) => {
+    const seed = seedData.services.find((x) => x.id === s.id);
+    if (!seed) return s;
+    let next = s;
+    if (OUTDATED_SERVICE_IMAGES[s.id] === s.imageUrl) next = { ...next, imageUrl: seed.imageUrl };
+    if (s.id === 'svc-design-package' && s.features.includes('3 design options')) {
+      next = { ...next, description: seed.description, features: [...seed.features], inclusions: [...seed.inclusions] };
+    }
+    if (next !== s) changed = true;
+    return next;
+  });
+  return changed;
+}
+
 function read(): LocalStore {
   try {
     const raw = localStorage.getItem(DB_KEY);
     if (raw) {
       const store = { ...defaultStore(), ...(JSON.parse(raw) as Partial<LocalStore>) } as LocalStore;
       const repaired = repairBrokenImages(store);
-      if (replacePlaceholderProjects(store) || repaired) write(store);
+      const refreshed = refreshSeededServices(store);
+      if (replacePlaceholderProjects(store) || repaired || refreshed) write(store);
       return store;
     }
   } catch {

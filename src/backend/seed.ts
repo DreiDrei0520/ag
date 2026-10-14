@@ -54,7 +54,7 @@ export const seedServices: Service[] = [
     shortDescription: 'Full ground-up construction from land preparation to structural completion.',
     description:
       'End-to-end construction of residential and commercial structures built to your approved plans. Includes site clearing, excavation, foundation, structural works, framing, roofing, and MEP rough-ins under engineer supervision.',
-    imageUrl: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=1200&q=80',
+    imageUrl: '/services/ground-zero-construction.webp',
     features: ['Engineer-supervised builds', 'Transparent milestone billing', 'Single point of accountability'],
     inclusions: ['Site clearing and excavation', 'Foundation and structural works', 'Framing and roofing', 'MEP rough-ins'],
     startingPrice: 28000,
@@ -104,7 +104,7 @@ export const seedServices: Service[] = [
     shortDescription: 'Perimeter fencing and gate construction for any property.',
     description:
       'Perimeter fencing and gate construction for residential, commercial, and institutional properties including boundary survey, footings, CHB or masonry walls, and steel or automated gates.',
-    imageUrl: 'https://images.unsplash.com/photo-1600607687644-c7171b42498f?w=1200&q=80',
+    imageUrl: '/services/fence-and-gate.webp',
     features: ['Improved security', 'Immediate curb appeal', 'Fast turnaround'],
     inclusions: ['Boundary survey', 'Footing and wall construction', 'Steel or automated gate installation'],
     startingPrice: 4500,
@@ -154,7 +154,7 @@ export const seedServices: Service[] = [
     shortDescription: 'End-to-end construction management for private developments.',
     description:
       'End-to-end construction management for private residential and commercial developments with a dedicated project manager, flexible payment milestones, and confidential handling.',
-    imageUrl: 'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=1200&q=80',
+    imageUrl: '/services/private-projects.webp',
     features: ['Dedicated project manager', 'Flexible payment milestones', 'Confidential handling'],
     inclusions: ['Feasibility and planning', 'Design and permitting', 'Full construction management'],
     startingPrice: 30000,
@@ -204,7 +204,7 @@ export const seedServices: Service[] = [
     shortDescription: 'Multi-storey residential, mixed-use, and low-rise commercial buildings.',
     description:
       'Multi-storey builds engineered for seismic safety — structural design and analysis, multi-storey construction, and vertical MEP systems with modern architectural finishes.',
-    imageUrl: 'https://images.unsplash.com/photo-1541976590-713941681591?w=1200&q=80',
+    imageUrl: '/services/vertical-construction.webp',
     features: ['Engineered for seismic safety', 'Scalable to future floors', 'Modern architectural finishes'],
     inclusions: ['Structural design and analysis', 'Multi-storey construction', 'Vertical MEP systems'],
     startingPrice: 30000,
@@ -254,7 +254,7 @@ export const seedServices: Service[] = [
     shortDescription: 'Complete 2D/3D plans, structural, MEP, and signed-sealed documents.',
     description:
       'A complete design and planning package for your build — 2D floor plans, structural, architectural, electrical, plumbing and sanitary plans, plus 3D interior and exterior design. All plans are signed and sealed by licensed engineers, delivered in both soft and hard copies. Includes 2 design options, delivered in 5–7 days. Every plan is original — based on your title, lot plan, and lot measurements taken during the site visit, never a template. Partial packages: Master Plan only (2D) ₱30,000, 3D design only ₱25,000, Master Plan signed and sealed only ₱40,000.',
-    imageUrl: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=1200&q=80',
+    imageUrl: '/design/3d-exterior.webp',
     features: ['Signed and sealed plans', '2 design options', '5–7 days process', 'Original plan, not a template'],
     inclusions: ['2D & 3D plans', 'Structural, Architectural, Electrical, Plumbing, Sanitary', 'Soft copy and A3 hard copy', 'Signed and sealed by engineers'],
     startingPrice: 60000,

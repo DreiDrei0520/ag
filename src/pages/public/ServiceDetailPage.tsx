@@ -55,13 +55,12 @@ export default function ServiceDetailPage() {
             {service.slug === 'master-plan-design-package' && (
               <div>
                 <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-agdark-800">3D design preview</h2>
-                <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   {[
-                    'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=900&q=80',
-                    'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&q=80',
-                    'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=900&q=80',
-                  ].map((src) => (
-                    <img key={src} src={src} alt="3D interior and exterior design" className="h-44 w-full rounded-xl object-cover" />
+                    { src: '/design/3d-living-room.webp', alt: '3D perspective of a living room interior' },
+                    { src: '/design/3d-outdoor-lounge.webp', alt: '3D perspective of an outdoor lounge and pool' },
+                  ].map((img) => (
+                    <img key={img.src} src={img.src} alt={img.alt} className="h-56 w-full rounded-xl object-cover" />
                   ))}
                 </div>
               </div>
@@ -70,13 +69,12 @@ export default function ServiceDetailPage() {
             {service.slug === 'master-plan-design-package' && (
               <div>
                 <h2 className="font-display text-2xl font-bold uppercase tracking-wide text-agdark-800">Signed and sealed documents</h2>
-                <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                <div className="mt-4 grid gap-4 sm:grid-cols-2">
                   {[
-                    'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=900&q=80',
-                    'https://images.unsplash.com/photo-1581092160562-40aa08e78837?w=900&q=80',
-                    'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=900&q=80',
-                  ].map((src) => (
-                    <img key={src} src={src} alt="Signed and sealed construction plans" className="h-44 w-full rounded-xl object-cover" />
+                    { src: '/design/2d-plan-sheet.webp', alt: 'Plan sheet with perspective, vicinity map, and site development plan' },
+                    { src: '/design/2d-floor-plan.webp', alt: 'Ground and second floor plans' },
+                  ].map((img) => (
+                    <img key={img.src} src={img.src} alt={img.alt} className="h-56 w-full rounded-xl border border-agdark-100 bg-white object-contain p-2" />
                   ))}
                 </div>
               </div>
