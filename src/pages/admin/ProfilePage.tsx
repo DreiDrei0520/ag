@@ -14,6 +14,8 @@ export default function AdminProfile() {
   const [saving, setSaving] = useState(false);
   const [emailForm, setEmailForm] = useState({ newEmail: '', currentPassword: '' });
   const [changingEmail, setChangingEmail] = useState(false);
+  const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [changingPassword, setChangingPassword] = useState(false);
 
   if (!user) return null;
 
@@ -51,6 +53,32 @@ export default function AdminProfile() {
       toast.error(emailErrorMessage(err));
     } finally {
       setChangingEmail(false);
+    }
+  };
+
+  const changePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (passwordForm.newPassword.length < 8) {
+      toast.error('New password must be at least 8 characters.');
+      return;
+    }
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      toast.error('New passwords do not match.');
+      return;
+    }
+    if (passwordForm.newPassword === passwordForm.currentPassword) {
+      toast.error('New password must be different from your current password.');
+      return;
+    }
+    setChangingPassword(true);
+    try {
+      await auth.changePassword(passwordForm.currentPassword, passwordForm.newPassword);
+      setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      toast.success('Password updated');
+    } catch (err) {
+      toast.error(passwordErrorMessage(err));
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -106,6 +134,45 @@ export default function AdminProfile() {
           </div>
         </form>
       </Card>
+
+      <Card className="max-w-xl p-6">
+        <h2 className="font-display text-lg font-bold uppercase tracking-wide text-agdark-800">Change password</h2>
+        <p className="mt-1 text-sm text-agdark-500">Enter your current password to confirm it's you.</p>
+        <form onSubmit={changePassword} className="mt-5 space-y-4">
+          <Field label="Current password" required>
+            <Input
+              type="password"
+              autoComplete="current-password"
+              value={passwordForm.currentPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+              required
+            />
+          </Field>
+          <Field label="New password" hint="At least 8 characters." required>
+            <Input
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              value={passwordForm.newPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+              required
+            />
+          </Field>
+          <Field label="Confirm new password" required>
+            <Input
+              type="password"
+              autoComplete="new-password"
+              minLength={8}
+              value={passwordForm.confirmPassword}
+              onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+              required
+            />
+          </Field>
+          <div className="flex justify-end">
+            <Button type="submit" loading={changingPassword}>Change password</Button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
 }
@@ -126,5 +193,22 @@ function emailErrorMessage(err: unknown): string {
       return 'Please log out and log in again, then retry.';
     default:
       return err instanceof Error && !code ? err.message : 'Unable to change your email.';
+  }
+}
+
+function passwordErrorMessage(err: unknown): string {
+  const code = (err as { code?: string })?.code;
+  switch (code) {
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'Current password is incorrect.';
+    case 'auth/weak-password':
+      return 'New password is too weak. Use at least 8 characters.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please wait a moment and try again.';
+    case 'auth/requires-recent-login':
+      return 'Please log out and log in again, then retry.';
+    default:
+      return err instanceof Error && !code ? err.message : 'Unable to change your password.';
   }
 }
