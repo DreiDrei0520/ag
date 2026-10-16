@@ -2,6 +2,8 @@ import { useState } from 'react';
 import toast from 'react-hot-toast';
 import { Facebook, Linkedin, Mail, MapPin, MessageSquare, Phone } from 'lucide-react';
 import { Card } from '../../components/ui';
+import { db } from '../../backend';
+import { makeInquiryNumber } from '../../lib/format';
 import { notifyAdmins } from '../../lib/activity';
 import { writeAuditLog } from '../../lib/activity';
 import { MAIN_OFFICE_ADDRESS } from '../../lib/companyInfo';
@@ -15,13 +17,26 @@ export default function ContactPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
+      // Each message becomes an inquiry; admins reply from its page by email, phone or Messenger.
+      const inquiry = await db.inquiries.create({
+        inquiryNumber: makeInquiryNumber(),
+        clientId: '',
+        clientName: form.name.trim(),
+        clientEmail: form.email.trim(),
+        clientPhone: form.phone.trim() || undefined,
+        subject: form.subject,
+        message: form.message.trim(),
+        attachments: [],
+        status: 'Pending',
+      });
       await notifyAdmins({
-        title: `Contact message from ${form.name}`,
+        title: `New inquiry from ${form.name}`,
         message: `${form.email}${form.phone ? ` · ${form.phone}` : ''} — ${form.subject}: ${form.message}`,
         type: 'contact',
-        link: '/admin/notifications',
+        referenceId: inquiry.id,
+        link: `/admin/inquiries/${inquiry.id}`,
       });
-      await writeAuditLog({ actor: null }, 'contact_message', 'contact', undefined, {
+      await writeAuditLog({ actor: null }, 'contact_message', 'inquiry', inquiry.id, {
         name: form.name,
         email: form.email,
         phone: form.phone,
