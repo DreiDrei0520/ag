@@ -12,6 +12,8 @@ export default function AdminProfile() {
     address: user?.address ?? '',
   });
   const [saving, setSaving] = useState(false);
+  const [emailForm, setEmailForm] = useState({ newEmail: '', currentPassword: '' });
+  const [changingEmail, setChangingEmail] = useState(false);
 
   if (!user) return null;
 
@@ -33,6 +35,25 @@ export default function AdminProfile() {
     }
   };
 
+  const changeEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setChangingEmail(true);
+    try {
+      const { pendingVerification } = await auth.changeEmail(emailForm.currentPassword, emailForm.newEmail);
+      setEmailForm({ newEmail: '', currentPassword: '' });
+      if (pendingVerification) {
+        toast.success(`Verification link sent to ${emailForm.newEmail.trim()}. Open it to finish the change, then log in with the new email.`, { duration: 8000 });
+      } else {
+        refreshUser();
+        toast.success('Login email updated');
+      }
+    } catch (err) {
+      toast.error(emailErrorMessage(err));
+    } finally {
+      setChangingEmail(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <SectionHeader eyebrow="Admin portal" title="Profile settings" description="Your administrator account details." />
@@ -43,7 +64,7 @@ export default function AdminProfile() {
           <Field label="Full name" required>
             <Input value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} required />
           </Field>
-          <Field label="Email" hint="Contact support to change your email address.">
+          <Field label="Email" hint="Change your login email in the section below.">
             <Input value={user.email} disabled />
           </Field>
           <Field label="Phone">
@@ -57,6 +78,53 @@ export default function AdminProfile() {
           </div>
         </form>
       </Card>
+
+      <Card className="max-w-xl p-6">
+        <h2 className="font-display text-lg font-bold uppercase tracking-wide text-agdark-800">Change login email</h2>
+        <p className="mt-1 text-sm text-agdark-500">Enter your current password to confirm it's you.</p>
+        <form onSubmit={changeEmail} className="mt-5 space-y-4">
+          <Field label="New email" required>
+            <Input
+              type="email"
+              autoComplete="email"
+              value={emailForm.newEmail}
+              onChange={(e) => setEmailForm({ ...emailForm, newEmail: e.target.value })}
+              required
+            />
+          </Field>
+          <Field label="Current password" required>
+            <Input
+              type="password"
+              autoComplete="current-password"
+              value={emailForm.currentPassword}
+              onChange={(e) => setEmailForm({ ...emailForm, currentPassword: e.target.value })}
+              required
+            />
+          </Field>
+          <div className="flex justify-end">
+            <Button type="submit" loading={changingEmail}>Change email</Button>
+          </div>
+        </form>
+      </Card>
     </div>
   );
+}
+
+function emailErrorMessage(err: unknown): string {
+  const code = (err as { code?: string })?.code;
+  switch (code) {
+    case 'auth/wrong-password':
+    case 'auth/invalid-credential':
+      return 'Current password is incorrect.';
+    case 'auth/invalid-email':
+      return 'Enter a valid email address.';
+    case 'auth/email-already-in-use':
+      return 'Another account already uses this email.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please wait a moment and try again.';
+    case 'auth/requires-recent-login':
+      return 'Please log out and log in again, then retry.';
+    default:
+      return err instanceof Error && !code ? err.message : 'Unable to change your email.';
+  }
 }

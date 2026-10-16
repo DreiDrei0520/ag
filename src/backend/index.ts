@@ -41,6 +41,8 @@ type AuthAPI = {
   resetPasswordWithCode(email: string, code: string, newPassword: string): Promise<void>;
   updateProfile(uid: string, patch: Partial<AppUser>): Promise<void>;
   changePassword(current: string, next: string): Promise<void>;
+  /** Resolves `pendingVerification` when the new address must confirm a link before it takes effect. */
+  changeEmail(currentPassword: string, newEmail: string): Promise<{ pendingVerification: boolean }>;
   getCurrentUser(): Promise<AppUser | null>;
   subscribe(callback: (user: AppUser | null) => void): () => void;
 };

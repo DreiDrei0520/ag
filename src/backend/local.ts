@@ -389,6 +389,24 @@ export const localAuth = {
     map[user.uid] = btoa(next);
     localStorage.setItem(AUTH_KEY, JSON.stringify(map));
   },
+  async changeEmail(currentPassword: string, newEmail: string): Promise<{ pendingVerification: boolean }> {
+    const session = localStorage.getItem(SESSION_KEY);
+    const user = session ? read().users.find((u) => u.uid === session) : null;
+    if (!user) throw new Error('You must be logged in to change your email.');
+    seedAuthMap();
+    if (readAuthMap()[user.uid] !== btoa(currentPassword)) throw new Error('Current password is incorrect.');
+    const email = newEmail.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error('Enter a valid email address.');
+    if (email === user.email.toLowerCase()) throw new Error('That is already your login email.');
+    if (read().users.some((u) => u.uid !== user.uid && u.email.toLowerCase() === email)) {
+      throw new Error('Another account already uses this email.');
+    }
+    mutate((s) => {
+      s.users = s.users.map((u) => (u.uid === user.uid ? { ...u, email, updatedAt: nowIso() } : u));
+    }, 'users');
+    emitAuth();
+    return { pendingVerification: false };
+  },
   async getCurrentUser(): Promise<AppUser | null> {
     const session = localStorage.getItem(SESSION_KEY);
     if (!session) return null;

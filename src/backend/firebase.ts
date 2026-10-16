@@ -25,6 +25,7 @@ import {
   reauthenticateWithCredential,
   EmailAuthProvider,
   updatePassword,
+  verifyBeforeUpdateEmail,
 } from 'firebase/auth';
 import { auth, db, storage } from '../config';
 import type {
@@ -238,6 +239,18 @@ export const fbAuth = {
     await reauthenticateWithCredential(fbUser, credential);
     await updatePassword(fbUser, next);
   },
+  async changeEmail(currentPassword: string, newEmail: string): Promise<{ pendingVerification: boolean }> {
+    const fbUser = auth.currentUser;
+    if (!fbUser?.email) throw new Error('You must be logged in to change your email.');
+    const email = newEmail.trim().toLowerCase();
+    if (email === fbUser.email.toLowerCase()) throw new Error('That is already your login email.');
+    const credential = EmailAuthProvider.credential(fbUser.email, currentPassword);
+    await reauthenticateWithCredential(fbUser, credential);
+    // Firebase only switches the login email once the link sent to the new address is opened;
+    // subscribe() then copies the new address into the admin profile.
+    await verifyBeforeUpdateEmail(fbUser, email);
+    return { pendingVerification: true };
+  },
   async getCurrentUser(): Promise<AppUser | null> {
     const fbUser = auth.currentUser;
     if (!fbUser) return null;
@@ -258,6 +271,11 @@ export const fbAuth = {
         return;
       }
       const data = snap.data() as Record<string, unknown>;
+      // Keep the profile in step with a login email changed through verifyBeforeUpdateEmail.
+      if (fbUser.email && data.email !== fbUser.email) {
+        data.email = fbUser.email;
+        await updateDoc(doc(db, 'users', fbUser.uid), { email: fbUser.email, updatedAt: serverTimestamp() }).catch(() => undefined);
+      }
       callback(withId<AppUser>(fbUser.uid, { ...data, createdAt: toIso(data.createdAt) }));
     });
   },
