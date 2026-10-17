@@ -27,8 +27,6 @@ export default function AdminInquiryDetail() {
   const { messages } = useInquiryMessages(id ?? '');
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
-  // 'reply' goes to the client; 'log' records what the client said by email, phone or Messenger.
-  const [mode, setMode] = useState<'reply' | 'log'>('reply');
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const inquiry = useMemo(() => inquiries.find((i) => i.id === id), [inquiries, id]);
@@ -42,17 +40,6 @@ export default function AdminInquiryDetail() {
     const message = text.trim();
     setSending(true);
     try {
-      if (mode === 'log') {
-        await db.messages.create(inquiry.id, {
-          senderId: inquiry.clientId || 'client',
-          senderName: inquiry.clientName,
-          senderRole: 'client',
-          message,
-        });
-        setText('');
-        toast.success("Client's reply logged");
-        return;
-      }
       await db.messages.create(inquiry.id, {
         senderId: user?.uid ?? 'admin',
         senderName: user?.fullName ?? 'AG Construction',
@@ -63,6 +50,8 @@ export default function AdminInquiryDetail() {
         await db.inquiries.update(inquiry.id, { status: 'In Progress' });
       }
       setText('');
+      // Chat clients read replies in the website chat, so there is nothing to email.
+      if (inquiry.channel === 'chat') return;
       if (!inquiry.clientEmail) {
         toast.success('Reply saved. This client has no email — contact them by phone.');
         return;
@@ -91,7 +80,7 @@ export default function AdminInquiryDetail() {
     } finally {
       setSending(false);
     }
-  }, [inquiry, text, user, mode]);
+  }, [inquiry, text, user]);
 
   const changeStatus = async (status: string) => {
     if (!inquiry || status === inquiry.status) return;
@@ -183,11 +172,11 @@ export default function AdminInquiryDetail() {
         <div className="border-b border-agdark-100 px-5 py-3">
           <h2 className="font-display text-base font-bold uppercase tracking-wide text-agdark-800">Conversation</h2>
           <p className="mt-0.5 text-xs text-agdark-400">
-            Clients don't have accounts.{' '}
-            {isReplyEmailConfigured
-              ? 'Your replies are emailed to them automatically.'
-              : 'Sending a reply opens your email app with it filled in.'}{' '}
-            Log their answers here to keep the full history.
+            {inquiry.channel === 'chat'
+              ? 'Live chat from the website — the client sees your replies in their chat window.'
+              : isReplyEmailConfigured
+                ? 'Your replies are emailed to the client automatically.'
+                : 'Sending a reply opens your email app with it filled in.'}
           </p>
         </div>
         <div ref={scrollRef} className="max-h-[460px] space-y-3 overflow-y-auto bg-agdark-50/40 px-5 py-4">
@@ -205,34 +194,17 @@ export default function AdminInquiryDetail() {
             ))
           )}
         </div>
-        <div className="border-t border-agdark-100 bg-white px-4 py-3">
-          <div className="mb-2 flex gap-1 text-xs font-bold">
-            {([['reply', 'Reply to client'], ['log', "Log client's reply"]] as const).map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                onClick={() => setMode(value)}
-                className={cn(
-                  'rounded-full px-3 py-1',
-                  mode === value ? 'bg-agdark-800 text-white' : 'bg-agdark-50 text-agdark-500 hover:bg-agdark-100'
-                )}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
-              placeholder={mode === 'reply' ? 'Reply to the client…' : 'Paste or summarize what the client said…'}
-              className="h-10 flex-1 rounded-lg border border-agdark-200 px-3 text-sm focus:border-agblue focus:outline-none focus:ring-2 focus:ring-agblue/20"
-            />
-            <Button onClick={send} loading={sending} disabled={!text.trim()}>
-              <Send size={15} /> {mode === 'reply' ? 'Send' : 'Log'}
-            </Button>
-          </div>
+        <div className="flex items-center gap-2 border-t border-agdark-100 bg-white px-4 py-3">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && send()}
+            placeholder="Reply to the client…"
+            className="h-10 flex-1 rounded-lg border border-agdark-200 px-3 text-sm focus:border-agblue focus:outline-none focus:ring-2 focus:ring-agblue/20"
+          />
+          <Button onClick={send} loading={sending} disabled={!text.trim()}>
+            <Send size={15} /> Send
+          </Button>
         </div>
       </Card>
     </div>

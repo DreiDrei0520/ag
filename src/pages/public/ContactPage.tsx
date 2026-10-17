@@ -28,6 +28,7 @@ export default function ContactPage() {
         message: form.message.trim(),
         attachments: [],
         status: 'Pending',
+        channel: 'form',
       });
       await notifyAdmins({
         title: `New inquiry from ${form.name}`,

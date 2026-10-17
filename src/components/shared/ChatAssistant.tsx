@@ -1,7 +1,20 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Bot, MessageCircle, RotateCcw, Send, X } from 'lucide-react';
+import { Bot, MessageCircle, RotateCcw, Send, Users, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
+import { db } from '../../backend';
+import type { InquiryMessage } from '../../types';
+import {
+  LIVE_MAX_CHARS,
+  LiveChatStart,
+  LiveChatThread,
+  loadSeenCount,
+  loadSession,
+  saveSeenCount,
+  saveSession,
+  sendLiveMessage,
+  type LiveChatSession,
+} from './LiveChat';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -61,6 +74,17 @@ export default function ChatAssistant() {
   const [sending, setSending] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  // Live chat with the team, alongside the AI assistant.
+  const [session, setSession] = useState<LiveChatSession | null>(loadSession);
+  const [tab, setTab] = useState<'ai' | 'team'>(() => (loadSession() ? 'team' : 'ai'));
+  const [liveMessages, setLiveMessages] = useState<InquiryMessage[]>([]);
+  const [chatClosed, setChatClosed] = useState(false);
+  const [liveError, setLiveError] = useState('');
+  const [seenReplies, setSeenReplies] = useState(loadSeenCount);
+
+  const teamReplies = liveMessages.filter((m) => m.senderRole === 'admin').length;
+  const unread = Math.max(0, teamReplies - seenReplies);
+  const onTeamTab = tab === 'team';
 
   useEffect(() => {
     try {
@@ -71,10 +95,62 @@ export default function ChatAssistant() {
   }, [messages]);
 
   useEffect(() => {
+    if (!session) {
+      setLiveMessages([]);
+      return;
+    }
+    return db.messages.subscribeFor(session.inquiryId, setLiveMessages);
+  }, [session]);
+
+  // A chat the team resolved, cancelled or deleted can't take new messages.
+  useEffect(() => {
+    if (!session || !open) return;
+    let active = true;
+    db.inquiries
+      .get(session.inquiryId)
+      .then((inquiry) => active && setChatClosed(!inquiry || inquiry.status === 'Resolved' || inquiry.status === 'Cancelled'))
+      .catch(() => active && setChatClosed(true));
+    return () => {
+      active = false;
+    };
+  }, [session, open]);
+
+  useEffect(() => {
+    if (open && onTeamTab && teamReplies !== seenReplies) {
+      setSeenReplies(teamReplies);
+      saveSeenCount(teamReplies);
+    }
+  }, [open, onTeamTab, teamReplies, seenReplies]);
+
+  useEffect(() => {
     if (!open) return;
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
     inputRef.current?.focus();
-  }, [open, messages, sending]);
+  }, [open, messages, sending, tab, liveMessages]);
+
+  const sendLive = async (text: string) => {
+    const message = text.trim().slice(0, LIVE_MAX_CHARS);
+    if (!message || !session || sending) return;
+    setDraft('');
+    setSending(true);
+    setLiveError('');
+    try {
+      await sendLiveMessage(session, message, liveMessages[liveMessages.length - 1]);
+    } catch {
+      setDraft(message);
+      setLiveError('Message not sent. This chat may have been closed — start a new one, or call 0927-837-2757.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const startNewLiveChat = () => {
+    saveSession(null);
+    setSession(null);
+    setChatClosed(false);
+    setLiveError('');
+    setSeenReplies(0);
+  };
 
   const send = async (text: string) => {
     const question = text.trim().slice(0, MAX_CHARS);
@@ -117,22 +193,71 @@ export default function ChatAssistant() {
         >
           <header className="flex items-center gap-3 bg-agdark-800 px-4 py-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-agorange text-white">
-              <Bot size={18} />
+              {onTeamTab ? <Users size={18} /> : <Bot size={18} />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-base font-bold uppercase tracking-wide text-white">AG Assistant</p>
-              <p className="truncate text-[11px] text-agdark-300">AI answers — please confirm details with our team</p>
+              <p className="font-display text-base font-bold uppercase tracking-wide text-white">{onTeamTab ? 'AG Team' : 'AG Assistant'}</p>
+              <p className="truncate text-[11px] text-agdark-300">
+                {onTeamTab ? 'Chat with a real person from our team' : 'AI answers — please confirm details with our team'}
+              </p>
             </div>
-            <button onClick={reset} className="rounded-lg p-2 text-agdark-300 hover:bg-white/10 hover:text-white" aria-label="Start a new chat" title="New chat">
-              <RotateCcw size={16} />
-            </button>
+            {onTeamTab ? null : (
+              <button onClick={reset} className="rounded-lg p-2 text-agdark-300 hover:bg-white/10 hover:text-white" aria-label="Start a new chat" title="New chat">
+                <RotateCcw size={16} />
+              </button>
+            )}
             <button onClick={close} className="rounded-lg p-2 text-agdark-300 hover:bg-white/10 hover:text-white" aria-label="Close chat">
               <X size={18} />
             </button>
           </header>
 
+          <div className="flex border-b border-agdark-100 bg-white text-xs font-bold" role="tablist">
+            {([['ai', 'AI Assistant'], ['team', 'Chat with our team']] as const).map(([value, label]) => (
+              <button
+                key={value}
+                role="tab"
+                aria-selected={tab === value}
+                onClick={() => setTab(value)}
+                className={cn(
+                  'relative flex-1 border-b-2 px-3 py-2.5 transition',
+                  tab === value ? 'border-agorange text-agorange' : 'border-transparent text-agdark-500 hover:text-agdark-800'
+                )}
+              >
+                {label}
+                {value === 'team' && unread > 0 ? (
+                  <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[10px] text-white">{unread}</span>
+                ) : null}
+              </button>
+            ))}
+          </div>
+
           <div ref={listRef} className="flex-1 space-y-3 overflow-y-auto bg-agdark-50/60 px-4 py-4" aria-live="polite">
-            {messages.map((m, i) => (
+            {onTeamTab ? (
+              session ? (
+                <>
+                  <LiveChatThread messages={liveMessages} />
+                  {chatClosed ? (
+                    <div className="rounded-xl border border-agdark-100 bg-white p-3 text-center text-xs text-agdark-500">
+                      This chat has been closed by our team.
+                      <button onClick={startNewLiveChat} className="mt-2 block w-full font-bold text-agorange hover:underline">
+                        Start a new chat
+                      </button>
+                    </div>
+                  ) : null}
+                  {liveError ? <p className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-800">{liveError}</p> : null}
+                </>
+              ) : (
+                <LiveChatStart
+                  aiQuestions={messages.filter((m) => m.role === 'user').map((m) => m.text)}
+                  onStarted={(s) => {
+                    setSession(s);
+                    setChatClosed(false);
+                    setSeenReplies(0);
+                  }}
+                />
+              )
+            ) : null}
+            {onTeamTab ? null : messages.map((m, i) => (
               <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div
                   className={cn(
@@ -148,7 +273,7 @@ export default function ChatAssistant() {
                 </div>
               </div>
             ))}
-            {sending ? (
+            {sending && !onTeamTab ? (
               <div className="flex justify-start">
                 <div className="flex gap-1 rounded-2xl rounded-bl-md border border-agdark-100 bg-white px-4 py-3" aria-label="Assistant is typing">
                   {[0, 1, 2].map((d) => (
@@ -157,7 +282,7 @@ export default function ChatAssistant() {
                 </div>
               </div>
             ) : null}
-            {messages.length === 1 && !sending ? (
+            {!onTeamTab && messages.length === 1 && !sending ? (
               <div className="flex flex-wrap gap-2 pt-1">
                 {SUGGESTIONS.map((s) => (
                   <button
@@ -168,14 +293,22 @@ export default function ChatAssistant() {
                     {s}
                   </button>
                 ))}
+                <button
+                  onClick={() => setTab('team')}
+                  className="rounded-full border border-agdark-200 bg-white px-3 py-1.5 text-xs font-semibold text-agdark-600 hover:bg-agdark-50"
+                >
+                  Talk to a person
+                </button>
               </div>
             ) : null}
           </div>
 
+          {onTeamTab && (!session || chatClosed) ? null : (
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              send(draft);
+              if (onTeamTab) sendLive(draft);
+              else send(draft);
             }}
             className="flex items-end gap-2 border-t border-agdark-100 bg-white p-3"
           >
@@ -188,11 +321,12 @@ export default function ChatAssistant() {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  send(draft);
+                  if (onTeamTab) sendLive(draft);
+                  else send(draft);
                 }
               }}
-              placeholder="Ask about packages, payment, permits…"
-              aria-label="Your question"
+              placeholder={onTeamTab ? 'Message our team…' : 'Ask about packages, payment, permits…'}
+              aria-label={onTeamTab ? 'Your message' : 'Your question'}
               className="max-h-28 min-h-[40px] flex-1 resize-none rounded-lg border border-agdark-200 px-3 py-2 text-sm focus:border-agorange focus:outline-none"
             />
             <button
@@ -204,6 +338,7 @@ export default function ChatAssistant() {
               <Send size={16} />
             </button>
           </form>
+          )}
         </section>
       ) : null}
 
@@ -211,8 +346,13 @@ export default function ChatAssistant() {
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
         aria-label={open ? 'Close AG Assistant' : 'Open AG Assistant'}
-        className="flex h-14 items-center gap-2 rounded-full bg-agorange px-4 font-semibold text-white shadow-xl transition hover:bg-agorange-600 active:scale-95"
+        className="relative flex h-14 items-center gap-2 rounded-full bg-agorange px-4 font-semibold text-white shadow-xl transition hover:bg-agorange-600 active:scale-95"
       >
+        {!open && unread > 0 ? (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] text-white" aria-label={`${unread} new replies from our team`}>
+            {unread}
+          </span>
+        ) : null}
         {open ? <X size={22} /> : <MessageCircle size={22} />}
         <span className={cn('text-sm', open ? 'sr-only' : 'hidden sm:inline')}>Ask AG</span>
       </button>

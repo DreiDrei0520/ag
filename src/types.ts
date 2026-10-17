@@ -200,6 +200,8 @@ export interface Inquiry extends Timestamped {
   quotationNumber?: string;
   attachments: Attachment[];
   status: InquiryStatus;
+  /** 'chat' inquiries come from the website chat, where the client reads replies live. */
+  channel?: 'form' | 'chat';
 }
 
 export interface InquiryMessage {
