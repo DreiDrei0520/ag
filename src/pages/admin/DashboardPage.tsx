@@ -1,9 +1,44 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRight, Building2, MessageSquareText, ReceiptText, Users, Wrench } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { ArrowRight, Building2, DatabaseZap, MessageSquareText, ReceiptText, Users, Wrench } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useServices, useProjects, useQuotations, useInquiries } from '../../hooks/useData';
 import { formatPHP, formatDate } from '../../lib/format';
-import { Card, StatCard, StatusBadge, PageLoader } from '../../components/ui';
+import { Button, Card, StatCard, StatusBadge, PageLoader } from '../../components/ui';
+import { db } from '../../backend';
+import { importStarterContent } from '../../backend/starterContent';
+
+// Shown to an admin on a fresh Firebase database, to copy in the website's built-in content.
+function StarterContentCard() {
+  const [step, setStep] = useState<string | null>(null);
+  const run = async () => {
+    try {
+      await importStarterContent(setStep);
+      toast.success('Website content imported.');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Import failed. Please try again.');
+    } finally {
+      setStep(null);
+    }
+  };
+  return (
+    <Card className="flex flex-col gap-4 border-agorange/40 bg-agorange-50/60 p-6 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex gap-3">
+        <DatabaseZap size={22} className="mt-0.5 shrink-0 text-agorange" />
+        <div>
+          <p className="font-semibold text-agdark-800">Your database is empty</p>
+          <p className="mt-0.5 text-sm text-agdark-600">
+            Import the website's services, projects, packages, announcements, and settings so the public site has content.
+          </p>
+        </div>
+      </div>
+      <Button onClick={run} loading={step !== null} className="shrink-0">
+        {step ? `Importing ${step.toLowerCase()}…` : 'Import website content'}
+      </Button>
+    </Card>
+  );
+}
 
 export default function AdminDashboard() {
   const { services, loading: servicesLoading } = useServices();
@@ -43,6 +78,8 @@ export default function AdminDashboard() {
         <h1 className="font-display text-3xl font-bold uppercase tracking-wide text-agdark-800">Operations overview</h1>
         <p className="mt-1 text-sm text-agdark-500">A live snapshot of AG Construction Builders.</p>
       </div>
+
+      {!db.isDemoMode && services.length === 0 && projects.length === 0 ? <StarterContentCard /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Quotations" value={quotations.length} icon={<ReceiptText size={20} />} hint={`${submitted.length} awaiting review`} />

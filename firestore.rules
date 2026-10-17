@@ -1,0 +1,88 @@
+rules_version = '2';
+
+// Security rules for the AG Construction Builders website.
+// Publish these in Firebase console → Firestore Database → Rules whenever this file changes.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // The single site owner. Their first login creates their admin profile (see fbAuth.login).
+    function ownerEmail() {
+      return 'aceattacker028@gmail.com';
+    }
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Website content: anyone can read, only admins can change.
+    match /services/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /serviceCategories/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /projects/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /projectCategories/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /announcements/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /pricingRules/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /additionalServices/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /pricingConfig/{id} { allow read: if true; allow write: if isAdmin(); }
+    match /systemSettings/{id} { allow read: if true; allow write: if isAdmin(); }
+
+    // Uploaded images, stored inline (the free Spark plan has no Cloud Storage) and served by
+    // /api/media/{id}. Each image must stay under Firestore's 1 MiB document limit.
+    match /media/{id} {
+      allow read: if true;
+      allow create: if isAdmin() && request.resource.data.data is string && request.resource.data.data.size() < 1000000;
+      allow delete: if isAdmin();
+    }
+
+    // Visitors submit quotations and contact messages as guests; these also notify admins and
+    // write an audit entry. Guests can only create — never read, change, or delete.
+    match /quotations/{id} { allow create: if true; allow read, update, delete: if isAdmin(); }
+    match /notifications/{id} { allow create: if true; allow read, update, delete: if isAdmin(); }
+    match /auditLogs/{id} { allow create: if true; allow read: if isAdmin(); }
+
+    // Visitors open inquiries from the contact form or the website chat; admins handle the rest.
+    // A chat's random document id (kept only in the visitor's browser) is what lets that visitor
+    // read it and keep talking: guests may fetch one chat by id but can never list inquiries.
+    function isChat(id) {
+      return get(/databases/$(database)/documents/inquiries/$(id)).data.channel == 'chat';
+    }
+    function chatIsOpen(id) {
+      return get(/databases/$(database)/documents/inquiries/$(id)).data.status in ['Pending', 'In Progress'];
+    }
+
+    match /inquiries/{id} {
+      allow create: if request.resource.data.status == 'Pending'
+        && request.resource.data.get('channel', 'form') in ['form', 'chat']
+        && request.resource.data.clientEmail is string
+        && request.resource.data.message is string && request.resource.data.message.size() < 5000;
+      allow get: if resource.data.get('channel', 'form') == 'chat';
+      allow read, write: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if isAdmin() || isChat(id);
+        allow create: if isAdmin() || (isChat(id) && chatIsOpen(id)
+          && request.resource.data.senderRole == 'client'
+          && request.resource.data.isRead == false
+          && request.resource.data.message is string && request.resource.data.message.size() < 2000);
+        allow update, delete: if isAdmin();
+      }
+    }
+    match /bookings/{id} { allow read, write: if isAdmin(); }
+
+    // Admin profiles. The owner may create their own admin profile once; nobody can promote
+    // themselves otherwise.
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.auth.token.email == ownerEmail()
+        && request.resource.data.role == 'admin';
+      allow update: if isAdmin()
+        && (request.auth.uid != uid || request.resource.data.role == resource.data.role);
+      allow delete: if false;
+    }
+  }
+}

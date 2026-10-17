@@ -13,7 +13,6 @@ import {
   serverTimestamp,
   limit,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   signInWithEmailAndPassword,
   signOut,
@@ -28,7 +27,7 @@ import {
   verifyBeforeUpdateEmail,
   reload,
 } from 'firebase/auth';
-import { auth, db, storage } from '../config';
+import { auth, db, OWNER_EMAIL } from '../config';
 import type {
   AdditionalService,
   Announcement,
@@ -214,7 +213,24 @@ export const fbAuth = {
   async login(email: string, password: string, remember: boolean): Promise<void> {
     await setPersistence(auth, remember ? browserLocalPersistence : browserSessionPersistence);
     const credential = await signInWithEmailAndPassword(auth, email, password);
-    const snap = await getDoc(doc(db, 'users', credential.user.uid));
+    const profileRef = doc(db, 'users', credential.user.uid);
+    let snap = await getDoc(profileRef);
+    // The owner's first login creates their admin profile (allowed only for them by the rules).
+    if (!snap.exists() && credential.user.email?.toLowerCase() === OWNER_EMAIL) {
+      await setDoc(profileRef, {
+        uid: credential.user.uid,
+        fullName: 'AG Construction Builders',
+        email: credential.user.email,
+        role: 'admin',
+        phone: '',
+        address: '',
+        emailVerified: credential.user.emailVerified,
+        isActive: true,
+        createdAt: serverTimestamp(),
+        lastLoginAt: nowIso(),
+      });
+      snap = await getDoc(profileRef);
+    }
     if (!snap.exists() || snap.data().role !== 'admin') {
       await signOut(auth);
       throw new Error('Only admin accounts can log in.');
@@ -295,12 +311,31 @@ export const fbAuth = {
   },
 };
 
-// ---------- storage ----------
+// ---------- uploads ----------
+
+// Firebase's free Spark plan has no Cloud Storage, so each upload is kept as a data URL in its own
+// `media` document and served (with long-lived CDN caching) by the /api/media/{id} function.
+const MAX_MEDIA_CHARS = 1_000_000;
+
+function readAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Unable to read file'));
+    reader.onload = () => resolve(reader.result as string);
+    reader.readAsDataURL(file);
+  });
+}
 
 export async function fbUploadAttachment(path: string, file: File): Promise<string> {
-  const storageRef = ref(storage, path);
-  await uploadBytes(storageRef, file);
-  return getDownloadURL(storageRef);
+  const data = await readAsDataUrl(file);
+  if (data.length >= MAX_MEDIA_CHARS) throw new Error('Image is too large to upload. Try a smaller photo.');
+  const ref = await addDoc(collection(db, 'media'), {
+    data,
+    contentType: file.type || 'application/octet-stream',
+    name: path,
+    createdAt: serverTimestamp(),
+  });
+  return `/api/media/${ref.id}`;
 }
 
 export async function ensurePricingConfigExists() {
