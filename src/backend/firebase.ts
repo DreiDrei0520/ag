@@ -26,6 +26,7 @@ import {
   EmailAuthProvider,
   updatePassword,
   verifyBeforeUpdateEmail,
+  reload,
 } from 'firebase/auth';
 import { auth, db, storage } from '../config';
 import type {
@@ -265,18 +266,31 @@ export const fbAuth = {
         callback(null);
         return;
       }
-      const snap = await getDoc(doc(db, 'users', fbUser.uid));
+      // The browser keeps a cached copy of the account. Refresh it so a session started before an
+      // email or password change picks up the new email, or is signed out once Firebase has
+      // revoked it. A network failure keeps the cached copy.
+      try {
+        if (auth.currentUser) await reload(auth.currentUser);
+      } catch (err) {
+        const code = (err as { code?: string })?.code;
+        if (code === 'auth/user-token-expired' || code === 'auth/user-disabled' || code === 'auth/user-not-found' || code === 'auth/invalid-user-token') {
+          await signOut(auth);
+          return;
+        }
+      }
+      const current = auth.currentUser ?? fbUser;
+      const snap = await getDoc(doc(db, 'users', current.uid));
       if (!snap.exists()) {
         callback(null);
         return;
       }
       const data = snap.data() as Record<string, unknown>;
       // Keep the profile in step with a login email changed through verifyBeforeUpdateEmail.
-      if (fbUser.email && data.email !== fbUser.email) {
-        data.email = fbUser.email;
-        await updateDoc(doc(db, 'users', fbUser.uid), { email: fbUser.email, updatedAt: serverTimestamp() }).catch(() => undefined);
+      if (current.email && data.email !== current.email) {
+        data.email = current.email;
+        await updateDoc(doc(db, 'users', current.uid), { email: current.email, updatedAt: serverTimestamp() }).catch(() => undefined);
       }
-      callback(withId<AppUser>(fbUser.uid, { ...data, createdAt: toIso(data.createdAt) }));
+      callback(withId<AppUser>(current.uid, { ...data, createdAt: toIso(data.createdAt) }));
     });
   },
 };
