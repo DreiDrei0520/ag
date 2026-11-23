@@ -1,5 +1,5 @@
 import { specFromPrompt } from '../src/lib/houseDesign.js';
-import { buildHouseConceptSvg } from '../src/lib/houseConceptSvg.js';
+import { buildHouseConceptViews } from '../src/lib/houseConceptSvg.js';
 
 const DEFAULT_IMAGE_MODEL = 'gemini-nano-banana-2.1';
 const MAX_PROMPT_CHARS = 3000;
@@ -40,12 +40,13 @@ function json(body: unknown, status = 200): Response {
 }
 
 function conceptFallback(prompt: string) {
-  const svg = buildHouseConceptSvg(specFromPrompt(prompt));
+  const views = buildHouseConceptViews(specFromPrompt(prompt));
   return {
-    image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+    image: views[0].image,
     mimeType: 'image/svg+xml',
     source: 'concept' as const,
-    note: 'Live AI rendering is unavailable, so this is an AG concept illustration generated from your specs.',
+    views,
+    note: 'Live AI rendering is unavailable, so this is an AG architectural concept generated from your specs — drag to view all sides.',
   };
 }
 

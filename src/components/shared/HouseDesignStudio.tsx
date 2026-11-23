@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Check, Copy, Download, Image as ImageIcon, Loader2, Send, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { DESIGN_PACKAGE } from '../../lib/companyInfo';
+import HouseDesignViewer from './HouseDesignViewer';
 import {
   DESIGN_FEATURES,
   DESIGN_STYLES,
@@ -93,6 +94,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
   const [spec, setSpec] = useState<HouseDesignSpec>(createHouseDesignSpec);
   const [result, setResult] = useState<{ estimate: HouseDesignEstimate; prompt: string } | null>(null);
   const [image, setImage] = useState('');
+  const [views, setViews] = useState<{ label: string; image: string }[] | undefined>();
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -115,6 +117,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     const estimate = estimateHouseDesign(spec);
     setResult({ estimate, prompt: buildDesignPrompt(spec, estimate) });
     setImage('');
+    setViews(undefined);
     setNote('');
     setCopied(false);
     setError('');
@@ -146,6 +149,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     try {
       const generated = await generateHouseDesignImage(result.prompt);
       setImage(generated.image);
+      setViews(generated.views);
       setNote(generated.note || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Image generation is unavailable right now.');
@@ -296,8 +300,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
 
           {image ? (
             <div className="space-y-2">
-              <img src={image} alt="Generated house design concept" className="w-full rounded-lg border border-agdark-100" />
-              {note ? <p className="text-[10px] leading-4 text-agdark-500">{note}</p> : null}
+              <HouseDesignViewer image={image} views={views} note={note} compact />
               <a
                 href={image}
                 download={designImageFileName(image)}

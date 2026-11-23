@@ -1,6 +1,6 @@
 import { DEFAULT_DISCLAIMER } from './constants';
 import { DESIGN_PACKAGE, FINISH_PACKAGES } from './companyInfo';
-import { buildHouseConceptSvg } from './houseConceptSvg';
+import { buildHouseConceptViews } from './houseConceptSvg';
 
 export const HOME_TYPES = ['Bungalow', '2-Storey', '3-Storey'] as const;
 export const DESIGN_STYLES = ['Modern', 'Minimalist', 'Tropical', 'Classic', 'Scandinavian', 'Luxury'] as const;
@@ -35,6 +35,7 @@ export interface GeneratedDesignImage {
   image: string;
   mimeType: string;
   source: 'gemini' | 'concept';
+  views?: { label: string; image: string }[];
   note?: string;
 }
 
@@ -113,12 +114,13 @@ export const designImageFileName = (image: string) =>
   image.startsWith('data:image/svg+xml') ? 'ag-house-design.svg' : 'ag-house-design.png';
 
 function localConceptFallback(prompt: string): GeneratedDesignImage {
-  const svg = buildHouseConceptSvg(specFromPrompt(prompt));
+  const views = buildHouseConceptViews(specFromPrompt(prompt));
   return {
-    image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+    image: views[0].image,
     mimeType: 'image/svg+xml',
     source: 'concept',
-    note: 'Live AI rendering is unavailable, so this is an AG concept illustration generated from your specs.',
+    views,
+    note: 'Live AI rendering is unavailable, so this is an AG architectural concept generated from your specs — drag to view all sides.',
   };
 }
 
@@ -133,6 +135,7 @@ export async function generateHouseDesignImage(prompt: string): Promise<Generate
       image?: string;
       mimeType?: string;
       source?: 'gemini' | 'concept';
+      views?: { label: string; image: string }[];
       note?: string;
       error?: string;
     };
@@ -141,6 +144,7 @@ export async function generateHouseDesignImage(prompt: string): Promise<Generate
       image: data.image,
       mimeType: data.mimeType || 'image/png',
       source: data.source || 'gemini',
+      views: data.views,
       note: data.note,
     };
   } catch {

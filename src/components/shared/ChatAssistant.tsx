@@ -6,6 +6,7 @@ import { db } from '../../backend';
 import { designImageFileName, generateHouseDesignImage, isHouseDesignPrompt } from '../../lib/houseDesign';
 import type { InquiryMessage } from '../../types';
 import HouseDesignStudio from './HouseDesignStudio';
+import HouseDesignViewer from './HouseDesignViewer';
 import {
   LIVE_MAX_CHARS,
   LiveChatStart,
@@ -22,6 +23,7 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
   image?: string;
+  views?: { label: string; image: string }[];
   /** Local-only messages (the greeting and error notices) are never sent back to the model. */
   local?: boolean;
   error?: boolean;
@@ -180,6 +182,7 @@ export default function ChatAssistant() {
             role: 'assistant',
             text: generated.note || 'Here is your house design concept. Open Design to adjust the specs and render again.',
             image: generated.image,
+            views: generated.views,
           },
         ]);
       } catch (err) {
@@ -321,7 +324,7 @@ export default function ChatAssistant() {
                 >
                   {m.role === 'user' ? m.text : (
                     <div className="space-y-2">
-                      {m.image ? <img src={m.image} alt="Generated house design concept" className="w-full rounded-lg border border-agdark-100" /> : null}
+                      {m.image ? <HouseDesignViewer image={m.image} views={m.views} compact /> : null}
                       <div>{renderText(m.text, close)}</div>
                       {m.image ? (
                         <a href={m.image} download={designImageFileName(m.image)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-agblue hover:underline">
