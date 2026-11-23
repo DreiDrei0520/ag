@@ -1,3 +1,6 @@
+import { specFromPrompt } from '../src/lib/houseDesign.js';
+import { buildHouseConceptSvg } from '../src/lib/houseConceptSvg.js';
+
 const DEFAULT_IMAGE_MODEL = 'gemini-nano-banana-2.1';
 const MAX_PROMPT_CHARS = 3000;
 const RATE_LIMIT = { windowMs: 5 * 60 * 1000, max: 8 };
@@ -36,12 +39,19 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 }
 
-export async function POST(request: Request): Promise<Response> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return json({ error: 'Image generation is not set up yet.' }, 503);
+function conceptFallback(prompt: string) {
+  const svg = buildHouseConceptSvg(specFromPrompt(prompt));
+  return {
+    image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+    mimeType: 'image/svg+xml',
+    source: 'concept' as const,
+    note: 'Live AI rendering is unavailable, so this is an AG concept illustration generated from your specs.',
+  };
+}
 
+export async function POST(request: Request): Promise<Response> {
   const ip = request.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
-  if (rateLimited(ip)) return json({ error: 'Too many image requests. Please wait a few minutes and try again.' }, 429);
+  const limited = rateLimited(ip);
 
   let body: unknown;
   try {
@@ -54,39 +64,39 @@ export async function POST(request: Request): Promise<Response> {
     : '';
   if (!prompt) return json({ error: 'A design prompt is required.' }, 400);
 
-  const model = process.env.GEMINI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
-  let res: Response;
-  try {
-    res = await fetch(`https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseModalities: ['TEXT', 'IMAGE'],
-          imageConfig: { aspectRatio: '4:3', imageSize: '1K' },
-        },
-      }),
-      signal: AbortSignal.timeout(45_000),
-    });
-  } catch (err) {
-    console.error('Gemini image request failed', err);
-    return json({ error: 'Image generation is unavailable right now.' }, 502);
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (apiKey && !limited) {
+    const model = process.env.GEMINI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseModalities: ['TEXT', 'IMAGE'],
+            imageConfig: { aspectRatio: '4:3', imageSize: '1K' },
+          },
+        }),
+        signal: AbortSignal.timeout(45_000),
+      });
+
+      if (res.ok) {
+        const data = (await res.json()) as GeminiImageResponse;
+        const part = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data || p.inline_data?.data);
+        const inline = part?.inlineData ?? part?.inline_data;
+        if (inline?.data) {
+          const mimeType = ('mime_type' in inline ? inline.mime_type : inline.mimeType) || 'image/png';
+          return json({ image: `data:${mimeType};base64,${inline.data}`, mimeType, source: 'gemini' });
+        }
+        console.error('Gemini returned no image', data.promptFeedback?.blockReason ?? data.candidates?.[0]?.finishReason ?? data.candidates?.[0]?.content?.finishReason);
+      } else {
+        console.error('Gemini image unavailable', res.status, (await res.text()).slice(0, 500));
+      }
+    } catch (err) {
+      console.error('Gemini image request failed', err);
+    }
   }
 
-  if (!res.ok) {
-    console.error('Gemini image error', res.status, (await res.text()).slice(0, 500));
-    return json({ error: 'Image generation is unavailable right now.' }, 502);
-  }
-
-  const data = (await res.json()) as GeminiImageResponse;
-  const part = data.candidates?.[0]?.content?.parts?.find((p) => p.inlineData?.data || p.inline_data?.data);
-  const inline = part?.inlineData ?? part?.inline_data;
-  if (!inline?.data) {
-    console.error('Gemini returned no image', data.promptFeedback?.blockReason ?? data.candidates?.[0]?.finishReason ?? data.candidates?.[0]?.content?.finishReason);
-    return json({ error: 'No image was generated. Try a more specific house design prompt.' }, 502);
-  }
-
-  const mimeType = ('mime_type' in inline ? inline.mime_type : inline.mimeType) || 'image/png';
-  return json({ image: `data:${mimeType};base64,${inline.data}`, mimeType });
+  return json(conceptFallback(prompt));
 }

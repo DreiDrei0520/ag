@@ -9,6 +9,7 @@ import {
   HOME_TYPES,
   buildDesignPrompt,
   createHouseDesignSpec,
+  designImageFileName,
   estimateHouseDesign,
   formatPeso,
   generateHouseDesignImage,
@@ -92,6 +93,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
   const [spec, setSpec] = useState<HouseDesignSpec>(createHouseDesignSpec);
   const [result, setResult] = useState<{ estimate: HouseDesignEstimate; prompt: string } | null>(null);
   const [image, setImage] = useState('');
+  const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
@@ -113,6 +115,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     const estimate = estimateHouseDesign(spec);
     setResult({ estimate, prompt: buildDesignPrompt(spec, estimate) });
     setImage('');
+    setNote('');
     setCopied(false);
     setError('');
   };
@@ -143,6 +146,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     try {
       const generated = await generateHouseDesignImage(result.prompt);
       setImage(generated.image);
+      setNote(generated.note || '');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Image generation is unavailable right now.');
     } finally {
@@ -293,9 +297,10 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
           {image ? (
             <div className="space-y-2">
               <img src={image} alt="Generated house design concept" className="w-full rounded-lg border border-agdark-100" />
+              {note ? <p className="text-[10px] leading-4 text-agdark-500">{note}</p> : null}
               <a
                 href={image}
-                download="ag-house-design.png"
+                download={designImageFileName(image)}
                 className="inline-flex items-center gap-1 text-[10px] font-bold text-agorange hover:underline"
               >
                 <Download size={13} />

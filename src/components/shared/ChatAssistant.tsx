@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { Bot, Download, Home, MessageCircle, RotateCcw, Send, Users, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { db } from '../../backend';
-import { generateHouseDesignImage, isHouseDesignPrompt } from '../../lib/houseDesign';
+import { designImageFileName, generateHouseDesignImage, isHouseDesignPrompt } from '../../lib/houseDesign';
 import type { InquiryMessage } from '../../types';
 import HouseDesignStudio from './HouseDesignStudio';
 import {
@@ -178,7 +178,7 @@ export default function ChatAssistant() {
           ...m,
           {
             role: 'assistant',
-            text: 'Here is your house design concept. Open Design to adjust the specs and render again.',
+            text: generated.note || 'Here is your house design concept. Open Design to adjust the specs and render again.',
             image: generated.image,
           },
         ]);
@@ -324,7 +324,7 @@ export default function ChatAssistant() {
                       {m.image ? <img src={m.image} alt="Generated house design concept" className="w-full rounded-lg border border-agdark-100" /> : null}
                       <div>{renderText(m.text, close)}</div>
                       {m.image ? (
-                        <a href={m.image} download="ag-house-design.png" className="inline-flex items-center gap-1 text-[11px] font-semibold text-agblue hover:underline">
+                        <a href={m.image} download={designImageFileName(m.image)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-agblue hover:underline">
                           <Download size={12} />
                           Download
                         </a>

@@ -33,6 +33,8 @@ export interface HouseDesignEstimate {
 export interface GeneratedDesignImage {
   image: string;
   mimeType: string;
+  source: 'gemini' | 'concept';
+  note?: string;
 }
 
 export const FINISH_OPTIONS = FINISH_PACKAGES.map((p) => p.shortName);
@@ -81,11 +83,33 @@ export function buildDesignPrompt(spec: HouseDesignSpec, estimate: HouseDesignEs
   ].join('\n');
 }
 
+export function specFromPrompt(prompt: string): HouseDesignSpec {
+  const spec = createHouseDesignSpec();
+  const value = prompt.toLowerCase();
+  const area = prompt.match(/(\d+)\s*sqm/i);
+  const bedrooms = prompt.match(/(\d+)\s*bedrooms?/i);
+  const bathrooms = prompt.match(/(\d+)\s*bathrooms?/i);
+  if (area) spec.floorArea = Number(area[1]);
+  if (bedrooms) spec.bedrooms = Number(bedrooms[1]);
+  if (bathrooms) spec.bathrooms = Number(bathrooms[1]);
+  const homeType = HOME_TYPES.find((type) => value.includes(type.toLowerCase()));
+  const finish = FINISH_OPTIONS.find((option) => value.includes(option.toLowerCase()));
+  const style = DESIGN_STYLES.find((item) => value.includes(item.toLowerCase()));
+  if (homeType) spec.homeType = homeType;
+  if (finish) spec.finish = finish;
+  if (style) spec.style = style;
+  spec.features = DESIGN_FEATURES.filter((feature) => value.includes(feature.toLowerCase()));
+  return spec;
+}
+
 export function isHouseDesignPrompt(text: string): boolean {
   const value = text.toLowerCase();
   const designIntent = /(create|generate|render|design|draw)/.test(value);
   return value.includes('architectural rendering') || (designIntent && value.includes('floor area') && value.includes('sqm'));
 }
+
+export const designImageFileName = (image: string) =>
+  image.startsWith('data:image/svg+xml') ? 'ag-house-design.svg' : 'ag-house-design.png';
 
 export async function generateHouseDesignImage(prompt: string): Promise<GeneratedDesignImage> {
   const res = await fetch('/api/design-image', {
@@ -93,7 +117,18 @@ export async function generateHouseDesignImage(prompt: string): Promise<Generate
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: prompt.trim().slice(0, 3000) }),
   });
-  const data = (await res.json().catch(() => ({}))) as { image?: string; mimeType?: string; error?: string };
+  const data = (await res.json().catch(() => ({}))) as {
+    image?: string;
+    mimeType?: string;
+    source?: 'gemini' | 'concept';
+    note?: string;
+    error?: string;
+  };
   if (!res.ok || !data.image) throw new Error(data.error || 'Image generation is unavailable right now.');
-  return { image: data.image, mimeType: data.mimeType || 'image/png' };
+  return {
+    image: data.image,
+    mimeType: data.mimeType || 'image/png',
+    source: data.source || 'gemini',
+    note: data.note,
+  };
 }
