@@ -1,9 +1,11 @@
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { Bot, MessageCircle, RotateCcw, Send, Users, X } from 'lucide-react';
+import { Bot, Download, Home, MessageCircle, RotateCcw, Send, Users, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { db } from '../../backend';
+import { generateHouseDesignImage, isHouseDesignPrompt } from '../../lib/houseDesign';
 import type { InquiryMessage } from '../../types';
+import HouseDesignStudio from './HouseDesignStudio';
 import {
   LIVE_MAX_CHARS,
   LiveChatStart,
@@ -19,17 +21,25 @@ import {
 interface ChatMessage {
   role: 'user' | 'assistant';
   text: string;
+  image?: string;
   /** Local-only messages (the greeting and error notices) are never sent back to the model. */
   local?: boolean;
   error?: boolean;
 }
+
+const TABS = [
+  { value: 'ai', label: 'AI Assistant', full: 'AI Assistant' },
+  { value: 'design', label: 'Design', full: 'House Design Studio' },
+  { value: 'team', label: 'Team', full: 'Chat with our team' },
+] as const;
+type Tab = (typeof TABS)[number]['value'];
 
 const STORAGE_KEY = 'ag_assistant_chat_v1';
 const MAX_CHARS = 1000;
 const GREETING: ChatMessage = {
   role: 'assistant',
   local: true,
-  text: 'Hi! I can answer questions about our packages, payment terms, timelines, warranty, and permit requirements. Pwede rin po sa Tagalog.',
+  text: 'Hi! I can answer questions about our packages, payment terms, timelines, warranty, and permits — or help you design a house. Pwede rin po sa Tagalog.',
 };
 const SUGGESTIONS = [
   'How much per sqm?',
@@ -76,7 +86,7 @@ export default function ChatAssistant() {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   // Live chat with the team, alongside the AI assistant.
   const [session, setSession] = useState<LiveChatSession | null>(loadSession);
-  const [tab, setTab] = useState<'ai' | 'team'>(() => (loadSession() ? 'team' : 'ai'));
+  const [tab, setTab] = useState<Tab>(() => (loadSession() ? 'team' : 'ai'));
   const [liveMessages, setLiveMessages] = useState<InquiryMessage[]>([]);
   const [chatClosed, setChatClosed] = useState(false);
   const [liveError, setLiveError] = useState('');
@@ -85,10 +95,11 @@ export default function ChatAssistant() {
   const teamReplies = liveMessages.filter((m) => m.senderRole === 'admin').length;
   const unread = Math.max(0, teamReplies - seenReplies);
   const onTeamTab = tab === 'team';
+  const onDesignTab = tab === 'design';
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages.map(({ image: _image, ...message }) => message)));
     } catch {
       /* storage unavailable — the chat still works for this page view */
     }
@@ -125,8 +136,8 @@ export default function ChatAssistant() {
   useEffect(() => {
     if (!open) return;
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
-    inputRef.current?.focus();
-  }, [open, messages, sending, tab, liveMessages]);
+    if (!onDesignTab) inputRef.current?.focus();
+  }, [open, messages, sending, tab, liveMessages, onDesignTab]);
 
   const sendLive = async (text: string) => {
     const message = text.trim().slice(0, LIVE_MAX_CHARS);
@@ -159,6 +170,30 @@ export default function ChatAssistant() {
     setMessages(next);
     setDraft('');
     setSending(true);
+
+    if (isHouseDesignPrompt(question)) {
+      try {
+        const generated = await generateHouseDesignImage(question);
+        setMessages((m) => [
+          ...m,
+          {
+            role: 'assistant',
+            text: 'Here is your house design concept. Open Design to adjust the specs and render again.',
+            image: generated.image,
+          },
+        ]);
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : 'Image generation is unavailable right now.';
+        setMessages((m) => [
+          ...m,
+          { role: 'assistant', local: true, error: true, text: `${reason} You can also open Design and try again.` },
+        ]);
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
@@ -179,6 +214,11 @@ export default function ChatAssistant() {
     }
   };
 
+  const askAssistantFromDesign = (prompt: string) => {
+    setTab('ai');
+    void send(prompt);
+  };
+
   const reset = () => setMessages([GREETING]);
   const close = () => setOpen(false);
 
@@ -193,15 +233,21 @@ export default function ChatAssistant() {
         >
           <header className="flex items-center gap-3 bg-agdark-800 px-4 py-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-agorange text-white">
-              {onTeamTab ? <Users size={18} /> : <Bot size={18} />}
+              {onTeamTab ? <Users size={18} /> : onDesignTab ? <Home size={18} /> : <Bot size={18} />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-display text-base font-bold uppercase tracking-wide text-white">{onTeamTab ? 'AG Team' : 'AG Assistant'}</p>
+              <p className="font-display text-base font-bold uppercase tracking-wide text-white">
+                {onTeamTab ? 'AG Team' : onDesignTab ? 'House Design' : 'AG Assistant'}
+              </p>
               <p className="truncate text-[11px] text-agdark-300">
-                {onTeamTab ? 'Chat with a real person from our team' : 'AI answers — please confirm details with our team'}
+                {onTeamTab
+                  ? 'Chat with a real person from our team'
+                  : onDesignTab
+                    ? 'Specs, estimate, prompt and concept render'
+                    : 'AI answers — please confirm details with our team'}
               </p>
             </div>
-            {onTeamTab ? null : (
+            {onTeamTab || onDesignTab ? null : (
               <button onClick={reset} className="rounded-lg p-2 text-agdark-300 hover:bg-white/10 hover:text-white" aria-label="Start a new chat" title="New chat">
                 <RotateCcw size={16} />
               </button>
@@ -211,15 +257,17 @@ export default function ChatAssistant() {
             </button>
           </header>
 
-          <div className="flex border-b border-agdark-100 bg-white text-xs font-bold" role="tablist">
-            {([['ai', 'AI Assistant'], ['team', 'Chat with our team']] as const).map(([value, label]) => (
+          <div className="flex border-b border-agdark-100 bg-white text-[11px] font-bold" role="tablist">
+            {TABS.map(({ value, label, full }) => (
               <button
                 key={value}
                 role="tab"
+                aria-label={full}
+                title={full}
                 aria-selected={tab === value}
                 onClick={() => setTab(value)}
                 className={cn(
-                  'relative flex-1 border-b-2 px-3 py-2.5 transition',
+                  'relative flex-1 border-b-2 px-2 py-2.5 transition',
                   tab === value ? 'border-agorange text-agorange' : 'border-transparent text-agdark-500 hover:text-agdark-800'
                 )}
               >
@@ -257,11 +305,13 @@ export default function ChatAssistant() {
                 />
               )
             ) : null}
-            {onTeamTab ? null : messages.map((m, i) => (
+            {onDesignTab ? <HouseDesignStudio onAskAssistant={askAssistantFromDesign} /> : null}
+            {onTeamTab || onDesignTab ? null : messages.map((m, i) => (
               <div key={i} className={cn('flex', m.role === 'user' ? 'justify-end' : 'justify-start')}>
                 <div
                   className={cn(
                     'max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-6',
+                    m.image ? 'max-w-full' : '',
                     m.role === 'user'
                       ? 'rounded-br-md bg-agorange text-white'
                       : m.error
@@ -269,11 +319,22 @@ export default function ChatAssistant() {
                         : 'rounded-bl-md border border-agdark-100 bg-white text-agdark-700'
                   )}
                 >
-                  {m.role === 'user' ? m.text : renderText(m.text, close)}
+                  {m.role === 'user' ? m.text : (
+                    <div className="space-y-2">
+                      {m.image ? <img src={m.image} alt="Generated house design concept" className="w-full rounded-lg border border-agdark-100" /> : null}
+                      <div>{renderText(m.text, close)}</div>
+                      {m.image ? (
+                        <a href={m.image} download="ag-house-design.png" className="inline-flex items-center gap-1 text-[11px] font-semibold text-agblue hover:underline">
+                          <Download size={12} />
+                          Download
+                        </a>
+                      ) : null}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
-            {sending && !onTeamTab ? (
+            {sending && !onTeamTab && !onDesignTab ? (
               <div className="flex justify-start">
                 <div className="flex gap-1 rounded-2xl rounded-bl-md border border-agdark-100 bg-white px-4 py-3" aria-label="Assistant is typing">
                   {[0, 1, 2].map((d) => (
@@ -282,7 +343,7 @@ export default function ChatAssistant() {
                 </div>
               </div>
             ) : null}
-            {!onTeamTab && messages.length === 1 && !sending ? (
+            {!onTeamTab && !onDesignTab && messages.length === 1 && !sending ? (
               <div className="flex flex-wrap gap-2 pt-1">
                 {SUGGESTIONS.map((s) => (
                   <button
@@ -294,6 +355,13 @@ export default function ChatAssistant() {
                   </button>
                 ))}
                 <button
+                  onClick={() => setTab('design')}
+                  className="inline-flex items-center gap-1 rounded-full border border-agblue/30 bg-white px-3 py-1.5 text-xs font-semibold text-agblue hover:bg-agblue-50"
+                >
+                  <Home size={13} />
+                  Design my house
+                </button>
+                <button
                   onClick={() => setTab('team')}
                   className="rounded-full border border-agdark-200 bg-white px-3 py-1.5 text-xs font-semibold text-agdark-600 hover:bg-agdark-50"
                 >
@@ -303,7 +371,7 @@ export default function ChatAssistant() {
             ) : null}
           </div>
 
-          {onTeamTab && (!session || chatClosed) ? null : (
+          {onDesignTab || (onTeamTab && (!session || chatClosed)) ? null : (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -325,7 +393,7 @@ export default function ChatAssistant() {
                   else send(draft);
                 }
               }}
-              placeholder={onTeamTab ? 'Message our team…' : 'Ask about packages, payment, permits…'}
+              placeholder={onTeamTab ? 'Message our team…' : 'Ask about packages, permits, or paste a design prompt…'}
               aria-label={onTeamTab ? 'Your message' : 'Your question'}
               className="max-h-28 min-h-[40px] flex-1 resize-none rounded-lg border border-agdark-200 px-3 py-2 text-sm focus:border-agorange focus:outline-none"
             />
