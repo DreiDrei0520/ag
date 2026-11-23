@@ -1,5 +1,6 @@
 import { DEFAULT_DISCLAIMER } from './constants';
 import { DESIGN_PACKAGE, FINISH_PACKAGES } from './companyInfo';
+import { buildHouseConceptSvg } from './houseConceptSvg';
 
 export const HOME_TYPES = ['Bungalow', '2-Storey', '3-Storey'] as const;
 export const DESIGN_STYLES = ['Modern', 'Minimalist', 'Tropical', 'Classic', 'Scandinavian', 'Luxury'] as const;
@@ -111,24 +112,38 @@ export function isHouseDesignPrompt(text: string): boolean {
 export const designImageFileName = (image: string) =>
   image.startsWith('data:image/svg+xml') ? 'ag-house-design.svg' : 'ag-house-design.png';
 
-export async function generateHouseDesignImage(prompt: string): Promise<GeneratedDesignImage> {
-  const res = await fetch('/api/design-image', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt: prompt.trim().slice(0, 3000) }),
-  });
-  const data = (await res.json().catch(() => ({}))) as {
-    image?: string;
-    mimeType?: string;
-    source?: 'gemini' | 'concept';
-    note?: string;
-    error?: string;
-  };
-  if (!res.ok || !data.image) throw new Error(data.error || 'Image generation is unavailable right now.');
+function localConceptFallback(prompt: string): GeneratedDesignImage {
+  const svg = buildHouseConceptSvg(specFromPrompt(prompt));
   return {
-    image: data.image,
-    mimeType: data.mimeType || 'image/png',
-    source: data.source || 'gemini',
-    note: data.note,
+    image: `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`,
+    mimeType: 'image/svg+xml',
+    source: 'concept',
+    note: 'Live AI rendering is unavailable, so this is an AG concept illustration generated from your specs.',
   };
+}
+
+export async function generateHouseDesignImage(prompt: string): Promise<GeneratedDesignImage> {
+  try {
+    const res = await fetch('/api/design-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: prompt.trim().slice(0, 3000) }),
+    });
+    const data = (await res.json().catch(() => ({}))) as {
+      image?: string;
+      mimeType?: string;
+      source?: 'gemini' | 'concept';
+      note?: string;
+      error?: string;
+    };
+    if (!res.ok || !data.image) return localConceptFallback(prompt);
+    return {
+      image: data.image,
+      mimeType: data.mimeType || 'image/png',
+      source: data.source || 'gemini',
+      note: data.note,
+    };
+  } catch {
+    return localConceptFallback(prompt);
+  }
 }
