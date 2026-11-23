@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowRight,
@@ -15,9 +15,11 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { useServices, useProjects, useSettings } from '../../hooks/useData';
+import { cn } from '../../lib/cn';
 import { formatPHP } from '../../lib/format';
 import { Card, Skeleton } from '../../components/ui';
 import { DESIGN_PACKAGE, FINISH_PACKAGES } from '../../lib/companyInfo';
+import HouseDesignStudio from '../../components/shared/HouseDesignStudio';
 
 const TICKER_ITEMS = [
   '120+ Projects Delivered',
@@ -157,6 +159,7 @@ function About() {
 export default function HomePage() {
   const { services, loading: servicesLoading } = useServices(true);
   const { projects, loading: projectsLoading } = useProjects(true);
+  const [designTab, setDesignTab] = useState<'studio' | 'packages'>('studio');
 
   const featuredServices = services.filter((s) => s.isFeatured).slice(0, 4);
   const featuredProjects = projects.filter((p) => p.isFeatured).slice(0, 3);
@@ -295,79 +298,155 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Design package */}
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
-          <div className="grid grid-cols-2 gap-4">
-            <img src="/design/2d-floor-plan.webp" alt="Ground and second floor plans from a master plan" className="h-64 w-full rounded-xl border border-agdark-100 bg-white object-contain p-2" />
-            <img src="/design/3d-living-room.webp" alt="3D perspective of a living room interior" className="mt-8 h-64 w-full rounded-xl object-cover" />
-          </div>
+      {/* Design studio & packages */}
+      <section id="design-studio" className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <p className="eyebrow">Design & Planning</p>
             <h2 className="mt-3 font-display text-4xl font-bold uppercase tracking-wide text-agdark-800">
-              Master Plan Design Package — <span className="text-agorange">₱60,000 all-in</span>
+              Preview your house in <span className="text-agorange">interactive 3D</span>
             </h2>
-            <p className="mt-5 leading-7 text-agdark-600">
-              A complete design package that covers everything you need to build with confidence:
-              2D plans, structural, architectural, electrical, plumbing and sanitary documents, plus 3D
-              interior and exterior design — all signed and sealed by licensed engineers, delivered in soft
-              copy and A3 hard copy. Includes 2 design options, ready in 5–7 days. Every plan is original,
-              drawn from your title, lot plan, and our site-visit measurements.
-            </p>
-            <ul className="mt-6 grid gap-3 sm:grid-cols-2">
-              {[
-                '2D & 3D plans',
-                'Structural, Electrical, Plumbing, Sanitary',
-                '2 design options',
-                '5–7 days process',
-                'Signed and sealed by engineers',
-                'Soft copy and A3 hard copy',
-              ].map((f) => (
-                <li key={f} className="flex items-center gap-2 text-sm text-agdark-600">
-                  <CheckCircle2 size={16} className="shrink-0 text-agorange" /> {f}
-                </li>
-              ))}
-            </ul>
-            <p className="mt-6 text-sm text-agdark-500">
-              Need only part of it?{' '}
-              {DESIGN_PACKAGE.alaCarte.map((o) => `${o.label} ${formatPHP(o.price)}`).join(' · ')}
-            </p>
-            <Link to="/services/master-plan-design-package" className="btn-primary mt-8">
-              Learn more about the design package <ArrowRight size={16} />
-            </Link>
+          </div>
+          <div role="tablist" aria-label="Design options" className="inline-flex shrink-0 rounded-lg border border-agdark-200 bg-white p-1">
+            {([
+              { key: 'studio', label: '3D Design Studio' },
+              { key: 'packages', label: 'Design Packages' },
+            ] as const).map((tab) => (
+              <button
+                key={tab.key}
+                type="button"
+                role="tab"
+                aria-selected={designTab === tab.key}
+                onClick={() => setDesignTab(tab.key)}
+                className={cn(
+                  'rounded-md px-4 py-2 text-xs font-bold transition',
+                  designTab === tab.key
+                    ? 'bg-agdark-800 text-white'
+                    : 'text-agdark-600 hover:bg-agdark-50 hover:text-agdark-800',
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
           </div>
         </div>
 
-        <div className="mt-14">
-          <p className="text-center eyebrow">Finishing packages</p>
-          <h3 className="mt-3 text-center font-display text-3xl font-bold uppercase tracking-wide text-agdark-800">
-            Choose your finish — per square meter
-          </h3>
-          <p className="mt-2 text-center text-sm text-agdark-500">All-in material and labor with supervision.</p>
-          <div className="mt-10 grid gap-6 md:grid-cols-3">
-            {[
-              { img: '/finishes/standard.webp', pkg: FINISH_PACKAGES[0], text: 'Porcelain tiles and counter top, aluminum modular cabinet, flat ceiling, and painted wall accents.' },
-              { img: '/finishes/elegant.webp', pkg: FINISH_PACKAGES[1], text: 'Wall tile and grooving accents, granite counter top, corner glass, glass stair railings, and high ceiling.' },
-              { img: '/finishes/luxury.webp', pkg: FINISH_PACKAGES[2], text: 'Stone accent, granite or quartz counter top, glass railings and bathroom partition, high ceiling, and landscape.' },
-            ].map(({ img, pkg, text }) => (
-              <div key={pkg.name} className="overflow-hidden rounded-xl border border-agdark-100 bg-white shadow-card">
-                <div className="h-48 overflow-hidden">
-                  <img src={img} alt={`${pkg.shortName} design render`} className="h-full w-full object-cover" />
-                </div>
-                <div className="p-5">
-                  <h4 className="font-display text-lg font-bold uppercase tracking-wide text-agdark-800">{pkg.shortName}</h4>
-                  <p className="mt-1 font-display text-lg font-bold text-agorange">{formatPHP(pkg.pricePerSqm)} / sqm</p>
-                  <p className="mt-2 text-sm text-agdark-500">{text}</p>
-                </div>
+        {designTab === 'studio' ? (
+          <div role="tabpanel" className="mt-8 grid gap-6 lg:grid-cols-[0.75fr_1.25fr]">
+            <div className="space-y-5 rounded-xl border border-agdark-100 bg-white p-6 shadow-card">
+              <div>
+                <p className="eyebrow">Try it now</p>
+                <h3 className="mt-2 font-display text-2xl font-bold uppercase tracking-wide text-agdark-800">
+                  From specs to a 3D massing model
+                </h3>
               </div>
-            ))}
+              <p className="text-sm leading-7 text-agdark-600">
+                Choose the house type, floor area, finish, style, and must-haves. The studio shows a rough
+                cost, builds a design brief, and renders a real-time 3D model you can drag and zoom.
+              </p>
+              <ul className="grid gap-3">
+                {[
+                  'Rotate 360° and zoom in on every side',
+                  'Bungalow, 2-storey, or 3-storey massing',
+                  'Finish palettes, roof styles, balcony, carport, and solar',
+                  'Preliminary cost before you commit',
+                ].map((item) => (
+                  <li key={item} className="flex items-start gap-2 text-sm text-agdark-600">
+                    <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-agorange" /> {item}
+                  </li>
+                ))}
+              </ul>
+              <div className="rounded-lg border border-agorange-200 bg-agorange-50 p-4 text-xs leading-5 text-agdark-700">
+                This is a concept massing model. Signed and sealed construction documents come with the
+                Master Plan Design Package.
+              </div>
+              <Link to="/services/master-plan-design-package" className="btn-outline-white inline-flex w-fit border-agdark-800 text-agdark-800 hover:bg-agdark-800 hover:text-white">
+                See the full package <ArrowRight size={15} />
+              </Link>
+            </div>
+            <div className="blueprint-grid-light rounded-xl border border-agdark-100 bg-agdark-50/40 p-4">
+              <HouseDesignStudio
+                onAskAssistant={(prompt) =>
+                  window.dispatchEvent(new CustomEvent<string>('ag-open-chat', { detail: prompt }))
+                }
+              />
+            </div>
           </div>
-          <p className="mt-6 text-center">
-            <Link to="/faq#packages" className="inline-flex items-center gap-2 text-sm font-bold text-agorange hover:text-agorange-600">
-              See full inclusions and exclusions <ArrowRight size={16} />
-            </Link>
-          </p>
-        </div>
+        ) : (
+          <div role="tabpanel" className="mt-8">
+            <div className="grid gap-10 lg:grid-cols-2 lg:items-center">
+              <div className="grid grid-cols-2 gap-4">
+                <img src="/design/2d-floor-plan.webp" alt="Ground and second floor plans from a master plan" className="h-64 w-full rounded-xl border border-agdark-100 bg-white object-contain p-2" />
+                <img src="/design/3d-living-room.webp" alt="3D perspective of a living room interior" className="mt-8 h-64 w-full rounded-xl object-cover" />
+              </div>
+              <div>
+                <p className="eyebrow">Design & Planning</p>
+                <h3 className="mt-3 font-display text-3xl font-bold uppercase tracking-wide text-agdark-800">
+                  Master Plan Design Package — <span className="text-agorange">₱60,000 all-in</span>
+                </h3>
+                <p className="mt-5 leading-7 text-agdark-600">
+                  A complete design package that covers everything you need to build with confidence:
+                  2D plans, structural, architectural, electrical, plumbing and sanitary documents, plus 3D
+                  interior and exterior design — all signed and sealed by licensed engineers, delivered in soft
+                  copy and A3 hard copy. Includes 2 design options, ready in 5–7 days. Every plan is original,
+                  drawn from your title, lot plan, and our site-visit measurements.
+                </p>
+                <ul className="mt-6 grid gap-3 sm:grid-cols-2">
+                  {[
+                    '2D & 3D plans',
+                    'Structural, Electrical, Plumbing, Sanitary',
+                    '2 design options',
+                    '5–7 days process',
+                    'Signed and sealed by engineers',
+                    'Soft copy and A3 hard copy',
+                  ].map((f) => (
+                    <li key={f} className="flex items-center gap-2 text-sm text-agdark-600">
+                      <CheckCircle2 size={16} className="shrink-0 text-agorange" /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-6 text-sm text-agdark-500">
+                  Need only part of it?{' '}
+                  {DESIGN_PACKAGE.alaCarte.map((o) => `${o.label} ${formatPHP(o.price)}`).join(' · ')}
+                </p>
+                <Link to="/services/master-plan-design-package" className="btn-primary mt-8">
+                  Learn more about the design package <ArrowRight size={16} />
+                </Link>
+              </div>
+            </div>
+
+            <div className="mt-14">
+              <p className="text-center eyebrow">Finishing packages</p>
+              <h3 className="mt-3 text-center font-display text-3xl font-bold uppercase tracking-wide text-agdark-800">
+                Choose your finish — per square meter
+              </h3>
+              <p className="mt-2 text-center text-sm text-agdark-500">All-in material and labor with supervision.</p>
+              <div className="mt-10 grid gap-6 md:grid-cols-3">
+                {[
+                  { img: '/finishes/standard.webp', pkg: FINISH_PACKAGES[0], text: 'Porcelain tiles and counter top, aluminum modular cabinet, flat ceiling, and painted wall accents.' },
+                  { img: '/finishes/elegant.webp', pkg: FINISH_PACKAGES[1], text: 'Wall tile and grooving accents, granite counter top, corner glass, glass stair railings, and high ceiling.' },
+                  { img: '/finishes/luxury.webp', pkg: FINISH_PACKAGES[2], text: 'Stone accent, granite or quartz counter top, glass railings and bathroom partition, high ceiling, and landscape.' },
+                ].map(({ img, pkg, text }) => (
+                  <div key={pkg.name} className="overflow-hidden rounded-xl border border-agdark-100 bg-white shadow-card">
+                    <div className="h-48 overflow-hidden">
+                      <img src={img} alt={`${pkg.shortName} design render`} className="h-full w-full object-cover" />
+                    </div>
+                    <div className="p-5">
+                      <h4 className="font-display text-lg font-bold uppercase tracking-wide text-agdark-800">{pkg.shortName}</h4>
+                      <p className="mt-1 font-display text-lg font-bold text-agorange">{formatPHP(pkg.pricePerSqm)} / sqm</p>
+                      <p className="mt-2 text-sm text-agdark-500">{text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-6 text-center">
+                <Link to="/faq#packages" className="inline-flex items-center gap-2 text-sm font-bold text-agorange hover:text-agorange-600">
+                  See full inclusions and exclusions <ArrowRight size={16} />
+                </Link>
+              </p>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Projects */}

@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { Check, Copy, Download, Image as ImageIcon, Loader2, Send, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { DESIGN_PACKAGE } from '../../lib/companyInfo';
-import HouseDesignViewer from './HouseDesignViewer';
+import House3DViewer from './House3DViewer';
 import {
   DESIGN_FEATURES,
   DESIGN_STYLES,
@@ -94,7 +94,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
   const [spec, setSpec] = useState<HouseDesignSpec>(createHouseDesignSpec);
   const [result, setResult] = useState<{ estimate: HouseDesignEstimate; prompt: string } | null>(null);
   const [image, setImage] = useState('');
-  const [views, setViews] = useState<{ label: string; image: string }[] | undefined>();
+  const [modelSpec, setModelSpec] = useState<HouseDesignSpec | null>(null);
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -117,7 +117,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     const estimate = estimateHouseDesign(spec);
     setResult({ estimate, prompt: buildDesignPrompt(spec, estimate) });
     setImage('');
-    setViews(undefined);
+    setModelSpec(null);
     setNote('');
     setCopied(false);
     setError('');
@@ -149,8 +149,8 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     try {
       const generated = await generateHouseDesignImage(result.prompt);
       setImage(generated.image);
-      setViews(generated.views);
-      setNote(generated.note || '');
+      setModelSpec(spec);
+      setNote('Interactive 3D massing model from your specs. For construction-ready plans, avail the design package.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Image generation is unavailable right now.');
     } finally {
@@ -163,7 +163,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
       <div className="blueprint-grid-light rounded-xl border border-agdark-100 bg-white px-3 py-3">
         <p className="eyebrow">House design studio</p>
         <h3 className="font-display text-xl font-bold uppercase leading-tight text-agdark-800">Design your house</h3>
-        <p className="mt-1 text-[11px] leading-4 text-agdark-500">Pick specs, see a rough cost, then generate a concept render.</p>
+        <p className="mt-1 text-[11px] leading-4 text-agdark-500">Pick specs, see a rough cost, then generate an interactive 3D house design.</p>
       </div>
 
       <section className="space-y-2 rounded-xl border border-agdark-100 bg-white p-3">
@@ -284,7 +284,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
           <div className="flex gap-2">
             <button type="button" onClick={render} disabled={busy} className="btn-primary h-9 flex-1 px-3 text-xs">
               {busy ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
-              {busy ? 'Rendering…' : 'Generate image'}
+              {busy ? 'Building 3D…' : 'Generate 3D design'}
             </button>
             <button
               type="button"
@@ -298,16 +298,17 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
 
           {error ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-[10px] text-red-800">{error}</p> : null}
 
-          {image ? (
+          {image && modelSpec ? (
             <div className="space-y-2">
-              <HouseDesignViewer image={image} views={views} note={note} compact />
+              <House3DViewer spec={modelSpec} height={340} />
+              {note ? <p className="text-[10px] leading-4 text-agdark-500">{note}</p> : null}
               <a
                 href={image}
                 download={designImageFileName(image)}
                 className="inline-flex items-center gap-1 text-[10px] font-bold text-agorange hover:underline"
               >
                 <Download size={13} />
-                Download concept
+                Download elevation sheet
               </a>
             </div>
           ) : null}

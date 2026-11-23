@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { Bot, Download, Home, MessageCircle, RotateCcw, Send, Users, X } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { db } from '../../backend';
-import { designImageFileName, generateHouseDesignImage, isHouseDesignPrompt } from '../../lib/houseDesign';
+import { designImageFileName, generateHouseDesignImage, isHouseDesignPrompt, specFromPrompt } from '../../lib/houseDesign';
+import type { HouseDesignSpec } from '../../lib/houseDesign';
 import type { InquiryMessage } from '../../types';
 import HouseDesignStudio from './HouseDesignStudio';
+import House3DViewer from './House3DViewer';
 import HouseDesignViewer from './HouseDesignViewer';
 import {
   LIVE_MAX_CHARS,
@@ -24,6 +26,7 @@ interface ChatMessage {
   text: string;
   image?: string;
   views?: { label: string; image: string }[];
+  modelSpec?: HouseDesignSpec;
   /** Local-only messages (the greeting and error notices) are never sent back to the model. */
   local?: boolean;
   error?: boolean;
@@ -101,7 +104,7 @@ export default function ChatAssistant() {
 
   useEffect(() => {
     try {
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages.map(({ image: _image, ...message }) => message)));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages.map(({ image: _image, views: _views, ...message }) => message)));
     } catch {
       /* storage unavailable — the chat still works for this page view */
     }
@@ -180,9 +183,10 @@ export default function ChatAssistant() {
           ...m,
           {
             role: 'assistant',
-            text: generated.note || 'Here is your house design concept. Open Design to adjust the specs and render again.',
+            text: 'Interactive 3D massing model from your specs. Open Design to adjust the house type, styles, and features.',
             image: generated.image,
             views: generated.views,
+            modelSpec: specFromPrompt(question),
           },
         ]);
       } catch (err) {
@@ -221,6 +225,19 @@ export default function ChatAssistant() {
     setTab('ai');
     void send(prompt);
   };
+
+  const askAssistantFromDesignRef = useRef(askAssistantFromDesign);
+  askAssistantFromDesignRef.current = askAssistantFromDesign;
+
+  useEffect(() => {
+    const openWithPrompt = (event: Event) => {
+      const prompt = (event as CustomEvent<string>).detail;
+      setOpen(true);
+      if (prompt) askAssistantFromDesignRef.current(prompt);
+    };
+    window.addEventListener('ag-open-chat', openWithPrompt);
+    return () => window.removeEventListener('ag-open-chat', openWithPrompt);
+  }, []);
 
   const reset = () => setMessages([GREETING]);
   const close = () => setOpen(false);
@@ -324,7 +341,8 @@ export default function ChatAssistant() {
                 >
                   {m.role === 'user' ? m.text : (
                     <div className="space-y-2">
-                      {m.image ? <HouseDesignViewer image={m.image} views={m.views} compact /> : null}
+                      {m.modelSpec ? <House3DViewer spec={m.modelSpec} height={260} /> : null}
+                      {m.image && !m.modelSpec ? <HouseDesignViewer image={m.image} views={m.views} compact /> : null}
                       <div>{renderText(m.text, close)}</div>
                       {m.image ? (
                         <a href={m.image} download={designImageFileName(m.image)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-agblue hover:underline">
