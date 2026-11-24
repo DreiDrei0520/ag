@@ -27,6 +27,7 @@ interface ChatMessage {
   image?: string;
   views?: { label: string; image: string }[];
   modelSpec?: HouseDesignSpec;
+  variant?: number;
   /** Local-only messages (the greeting and error notices) are never sent back to the model. */
   local?: boolean;
   error?: boolean;
@@ -187,6 +188,7 @@ export default function ChatAssistant() {
             image: generated.image,
             views: generated.views,
             modelSpec: specFromPrompt(question),
+            variant: Math.floor(Math.random() * 1_000_000),
           },
         ]);
       } catch (err) {
@@ -341,7 +343,7 @@ export default function ChatAssistant() {
                 >
                   {m.role === 'user' ? m.text : (
                     <div className="space-y-2">
-                      {m.modelSpec ? <House3DViewer spec={m.modelSpec} height={260} /> : null}
+                      {m.modelSpec ? <House3DViewer spec={m.modelSpec} height={260} seed={m.variant ?? 0} /> : null}
                       {m.image && !m.modelSpec ? <HouseDesignViewer image={m.image} views={m.views} compact /> : null}
                       <div>{renderText(m.text, close)}</div>
                       {m.image ? (

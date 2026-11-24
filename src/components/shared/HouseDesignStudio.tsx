@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Check, Copy, Download, Image as ImageIcon, Loader2, Send, Sparkles } from 'lucide-react';
+import { Check, Copy, Download, Image as ImageIcon, Loader2, Send, Shuffle, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { DESIGN_PACKAGE } from '../../lib/companyInfo';
 import House3DViewer from './House3DViewer';
@@ -95,6 +95,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
   const [result, setResult] = useState<{ estimate: HouseDesignEstimate; prompt: string } | null>(null);
   const [image, setImage] = useState('');
   const [modelSpec, setModelSpec] = useState<HouseDesignSpec | null>(null);
+  const [variant, setVariant] = useState(() => Math.floor(Math.random() * 1_000_000));
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -112,6 +113,8 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
         : [...current.features, feature],
     }));
   };
+
+  const nextVariant = (current: number) => current + 1;
 
   const generate = () => {
     const estimate = estimateHouseDesign(spec);
@@ -150,7 +153,8 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
       const generated = await generateHouseDesignImage(result.prompt);
       setImage(generated.image);
       setModelSpec(spec);
-      setNote('Interactive 3D massing model from your specs. For construction-ready plans, avail the design package.');
+      setVariant((current) => nextVariant(current));
+      setNote('Interactive 3D massing model from your specs. Use Shuffle for another variation. For construction-ready plans, avail the design package.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Image generation is unavailable right now.');
     } finally {
@@ -294,13 +298,23 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
               <Send size={14} />
               Ask AG
             </button>
+            <button
+              type="button"
+              onClick={() => setVariant((current) => nextVariant(current))}
+              disabled={busy || !modelSpec}
+              title="Generate another 3D variation"
+              aria-label="Generate another 3D variation"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-agdark-100 text-agdark-800 hover:bg-agdark-50 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <Shuffle size={14} />
+            </button>
           </div>
 
           {error ? <p className="rounded-lg border border-red-200 bg-red-50 p-2 text-[10px] text-red-800">{error}</p> : null}
 
           {image && modelSpec ? (
             <div className="space-y-2">
-              <House3DViewer spec={modelSpec} height={340} />
+              <House3DViewer spec={modelSpec} height={340} seed={variant} />
               {note ? <p className="text-[10px] leading-4 text-agdark-500">{note}</p> : null}
               <a
                 href={image}
