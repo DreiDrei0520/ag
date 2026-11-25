@@ -184,7 +184,7 @@ export default function ChatAssistant() {
           ...m,
           {
             role: 'assistant',
-            text: 'Interactive 3D massing model from your specs. Open Design to adjust the house type, styles, and features.',
+            text: 'Architectural render and interactive 3D model from your specs. Open Design to adjust the house type, finishes, styles, and features.',
             image: generated.image,
             views: generated.views,
             modelSpec: specFromPrompt(question),

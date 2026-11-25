@@ -2,7 +2,13 @@ import { specFromPrompt } from '../src/lib/houseDesign.js';
 import { buildHouseConceptViews } from '../src/lib/houseConceptSvg.js';
 
 const DEFAULT_IMAGE_MODEL = 'gemini-nano-banana-2.1';
+const DEFAULT_IMAGE_SIZE = '2K';
 const MAX_PROMPT_CHARS = 3000;
+const RENDER_DIRECTIVE = [
+  'You are an architectural visualization studio. Produce a single photorealistic exterior architectural render.',
+  'Preserve every specified floor, room, feature, material and finish exactly; do not simplify the design into a basic block or cartoon massing model.',
+  'Use professional composition, realistic daylight, global illumination, soft shadows, ambient occlusion, PBR materials and detailed landscaping.',
+].join('\n');
 const RATE_LIMIT = { windowMs: 5 * 60 * 1000, max: 8 };
 
 export const maxDuration = 60;
@@ -68,15 +74,16 @@ export async function POST(request: Request): Promise<Response> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (apiKey && !limited) {
     const model = process.env.GEMINI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
+    const imageSize = process.env.GEMINI_IMAGE_SIZE || DEFAULT_IMAGE_SIZE;
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/${encodeURIComponent(model)}:generateContent`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
         body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          contents: [{ role: 'user', parts: [{ text: `${RENDER_DIRECTIVE}\n\n${prompt}` }] }],
           generationConfig: {
             responseModalities: ['TEXT', 'IMAGE'],
-            imageConfig: { aspectRatio: '4:3', imageSize: '1K' },
+            imageConfig: { aspectRatio: '4:3', imageSize },
           },
         }),
         signal: AbortSignal.timeout(45_000),

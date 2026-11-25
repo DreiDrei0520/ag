@@ -1,6 +1,7 @@
 import { DEFAULT_DISCLAIMER } from './constants';
-import { DESIGN_PACKAGE, FINISH_PACKAGES } from './companyInfo';
+import { FINISH_PACKAGES, DESIGN_PACKAGE } from './companyInfo';
 import { buildHouseConceptViews } from './houseConceptSvg';
+import { buildHousePlan } from './houseLayout';
 
 export const HOME_TYPES = ['Bungalow', '2-Storey', '3-Storey'] as const;
 export const DESIGN_STYLES = ['Modern', 'Minimalist', 'Tropical', 'Classic', 'Scandinavian', 'Luxury'] as const;
@@ -71,17 +72,50 @@ export function estimateHouseDesign(spec: HouseDesignSpec): HouseDesignEstimate 
   };
 }
 
+const STYLE_DESIGN_NOTES: Record<(typeof DESIGN_STYLES)[number], string> = {
+  Modern: 'flat roof with slim parapet, clean horizontal massing, ribbon windows, cantilevered shades, smooth rendered walls',
+  Minimalist: 'pure cubic volumes, flat roof, restrained palette, sparse precisely framed windows, uncluttered facade',
+  Tropical: 'steep hipped roof with wide overhangs, timber louvers and screens, deep shaded veranda, lush planting',
+  Classic: 'symmetrical facade, gabled roof, columns and cornices, traditional proportioned windows, stone accents',
+  Scandinavian: 'low-pitch gable, pale wood cladding, light walls, tall narrow windows, simple honest detailing',
+  Luxury: 'layered flat roof, full-height glazing, stone and dark timber facade, dramatic entry portal, warm architectural lighting',
+};
+
+const FINISH_DESIGN_NOTES: Record<(typeof FINISH_OPTIONS)[number], string> = {
+  'Standard Finish': 'clean painted neutral walls, simple aluminum windows and standard doors, restrained exterior details, basic lawn and shrubs',
+  'Elegant Finish': 'premium timber slat accents, large glass windows, refined layered facade, decorative exterior sconces, detailed landscaping',
+  'Luxury Finish': 'premium stone cladding and dark wood, sophisticated facade composition, floor-to-ceiling glass where appropriate, advanced exterior lighting, luxury landscaping with water feature and outdoor living space',
+};
+
+const FEATURE_DESIGN_NOTES: Record<(typeof DESIGN_FEATURES)[number], string> = {
+  Balcony: 'a real upper-floor balcony with slab and railing, physically attached to the building',
+  Carport: 'a covered carport with columns, sloped canopy and paved driveway',
+  'High ceiling': 'taller floor-to-ceiling proportions and transom glazing',
+  Landscaping: 'layered trees, shrubs, garden beds and a planted approach',
+  'Home office': 'a dedicated private office room with its own exterior window',
+  'Solar-ready': 'a roof-mounted solar panel array with visible framing',
+};
+
 export function buildDesignPrompt(spec: HouseDesignSpec, estimate: HouseDesignEstimate): string {
   const finish = FINISH_PACKAGES.find((p) => p.shortName === spec.finish) ?? FINISH_PACKAGES[0];
   const area = Math.min(1000, Math.max(20, Math.round(spec.floorArea)));
-  const features = spec.features.length ? spec.features.join(', ') : 'no extra features specified';
+  const plan = buildHousePlan(spec);
+  const roomSchedule = plan.floorRooms
+    .map((rooms, floor) => `level ${floor + 1}: ${rooms.map((room) => room.name).join(', ')}`)
+    .join('; ');
+  const features = spec.features.length
+    ? spec.features.map((feature) => FEATURE_DESIGN_NOTES[feature]).join('; ')
+    : 'no extra features specified';
   return [
-    `Create a realistic architectural rendering of a ${spec.homeType.toLowerCase()} house in the Philippines.`,
-    `Total floor area: ${area} sqm. ${spec.bedrooms} bedrooms, ${spec.bathrooms} bathrooms.`,
-    `Architecture style: ${spec.style}. Finish package: ${estimate.packageName} — ${finish.inclusions.slice(0, 4).join(', ')}.`,
-    `Include: ${features}.`,
-    'Show a three-quarter exterior view in daylight with a clean tropical landscape, natural materials, and a welcoming entrance.',
-    'No people, no text, no logos, no watermarks. High-detail architectural visualization.',
+    'Professional architectural visualization for a real construction company portfolio, photorealistic exterior render.',
+    `Project: ${spec.homeType.toLowerCase()} house in the Philippines, ${spec.style} architecture, ${estimate.packageName}.`,
+    `Geometry: ${plan.floors} floor${plan.floors > 1 ? 's' : ''}, approximately ${plan.width.toFixed(1)}m wide by ${plan.depth.toFixed(1)}m deep on a ${area} sqm total floor area, ${plan.flatRoof ? 'flat roof' : 'pitched roof'}, ${plan.spec.features.includes('High ceiling') ? 'high ceiling' : 'standard ceiling height'}.`,
+    `Room program reflected in massing and window placement: ${roomSchedule}. Exactly ${spec.bedrooms} bedrooms and ${spec.bathrooms} bathrooms.`,
+    `Architectural style requirements: ${STYLE_DESIGN_NOTES[spec.style]}.`,
+    `Finish package requirements: ${FINISH_DESIGN_NOTES[spec.finish]}. Included materials: ${finish.inclusions.slice(0, 5).join(', ')}.`,
+    `Physically incorporate: ${features}.`,
+    'Rendering: physically based materials with realistic wall texture, roof tiles or membrane, reflective glass, natural sunlight and soft shadows, ambient occlusion, global illumination, detailed tropical trees and grass, professional three-quarter eye-level camera composition.',
+    'No people, no text, no logos, no watermarks.',
   ].join('\n');
 }
 

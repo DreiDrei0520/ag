@@ -3,6 +3,7 @@ import { Check, Copy, Download, Image as ImageIcon, Loader2, Send, Shuffle, Spar
 import { cn } from '../../lib/cn';
 import { DESIGN_PACKAGE } from '../../lib/companyInfo';
 import House3DViewer from './House3DViewer';
+import HouseDesignViewer from './HouseDesignViewer';
 import {
   DESIGN_FEATURES,
   DESIGN_STYLES,
@@ -94,6 +95,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
   const [spec, setSpec] = useState<HouseDesignSpec>(createHouseDesignSpec);
   const [result, setResult] = useState<{ estimate: HouseDesignEstimate; prompt: string } | null>(null);
   const [image, setImage] = useState('');
+  const [views, setViews] = useState<{ label: string; image: string }[] | undefined>();
   const [modelSpec, setModelSpec] = useState<HouseDesignSpec | null>(null);
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * 1_000_000));
   const [note, setNote] = useState('');
@@ -120,6 +122,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     const estimate = estimateHouseDesign(spec);
     setResult({ estimate, prompt: buildDesignPrompt(spec, estimate) });
     setImage('');
+    setViews(undefined);
     setModelSpec(null);
     setNote('');
     setCopied(false);
@@ -152,9 +155,10 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     try {
       const generated = await generateHouseDesignImage(result.prompt);
       setImage(generated.image);
+      setViews(generated.views);
       setModelSpec(spec);
       setVariant((current) => nextVariant(current));
-      setNote('Interactive 3D massing model from your specs. Use Shuffle for another variation. For construction-ready plans, avail the design package.');
+      setNote('Photorealistic elevation and interactive 3D model generated from your specs. Use Shuffle for another 3D variation, or the Floor plan button to inspect room allocation. For construction-ready plans, avail the design package.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Image generation is unavailable right now.');
     } finally {
@@ -167,7 +171,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
       <div className="blueprint-grid-light rounded-xl border border-agdark-100 bg-white px-3 py-3">
         <p className="eyebrow">House design studio</p>
         <h3 className="font-display text-xl font-bold uppercase leading-tight text-agdark-800">Design your house</h3>
-        <p className="mt-1 text-[11px] leading-4 text-agdark-500">Pick specs, see a rough cost, then generate an interactive 3D house design.</p>
+        <p className="mt-1 text-[11px] leading-4 text-agdark-500">Pick specs, see a rough cost, then generate a photorealistic elevation and interactive 3D house design.</p>
       </div>
 
       <section className="space-y-2 rounded-xl border border-agdark-100 bg-white p-3">
@@ -314,6 +318,10 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
 
           {image && modelSpec ? (
             <div className="space-y-2">
+              <div>
+                <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-agdark-500">Photorealistic elevation render</p>
+                <HouseDesignViewer image={image} views={views} compact />
+              </div>
               <House3DViewer spec={modelSpec} height={340} seed={variant} />
               {note ? <p className="text-[10px] leading-4 text-agdark-500">{note}</p> : null}
               <a
@@ -322,7 +330,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
                 className="inline-flex items-center gap-1 text-[10px] font-bold text-agorange hover:underline"
               >
                 <Download size={13} />
-                Download elevation sheet
+                Download elevation render
               </a>
             </div>
           ) : null}
