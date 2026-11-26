@@ -147,7 +147,11 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     }));
   };
 
-  const nextVariant = (current: number) => current + 1;
+  const nextVariant = (current: number) => {
+    let next = current;
+    while (next === current) next = Math.floor(Math.random() * 1_000_000_000);
+    return next;
+  };
 
   const generate = () => {
     const estimate = estimateHouseDesign(spec);
@@ -180,7 +184,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     if (!result) return;
     setModelSpec({ ...spec });
     setVariant((current) => nextVariant(current));
-    setNote('Interactive 3D model and realistic day/night renders generated from your specs. Use Shuffle for another variation, or the Floor plan button to inspect room allocation. For construction-ready plans, avail the design package.');
+    setNote('Fresh 3D design variation with realistic day/night renders generated from your specs. Use Shuffle for another layout, or the Floor plan button to inspect room allocation. For construction-ready plans, avail the design package.');
   };
 
   return (

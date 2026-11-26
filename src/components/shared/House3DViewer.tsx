@@ -1,10 +1,11 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
+import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import HouseFloorPlan from './HouseFloorPlan';
 import { buildHousePlan, type ExteriorFace, type HousePlan, type MassVolume, type Room } from '../../lib/houseLayout';
@@ -320,6 +321,11 @@ function paletteFor(plan: HousePlan): Palette {
     palette.wall = tier === 'luxury' ? '#404548' : '#ecece8';
     palette.wood = '#a69076';
   }
+  if (plan.paletteShift) {
+    (['wall', 'trim', 'stone', 'roof', 'ground'] as const).forEach((key) => {
+      palette[key] = new THREE.Color(palette[key]).offsetHSL(0, 0, plan.paletteShift).getStyle();
+    });
+  }
   return palette;
 }
 
@@ -344,13 +350,13 @@ function buildMaterials(plan: HousePlan, palette: Palette, seed: number): { mate
     roof: new THREE.MeshStandardMaterial({ color: color(palette.roof), map: roofMap, bumpMap: roofMap, bumpScale: 0.022, roughness: 0.76, metalness: 0.12, side: THREE.DoubleSide }),
     metal: new THREE.MeshStandardMaterial({ color: color(palette.metal), roughness: 0.32, metalness: 0.78 }),
     glass: new THREE.MeshPhysicalMaterial({
-      color: color(palette.glass), roughness: 0.06, metalness: 0.08, transmission: 0.28, thickness: 0.12,
-      ior: 1.45, clearcoat: 1, clearcoatRoughness: 0.04, envMapIntensity: 1.35,
-      transparent: true, opacity: 0.93, side: THREE.DoubleSide,
+      color: color(palette.glass), roughness: 0.04, metalness: 0.08, transmission: 0.45, thickness: 0.18,
+      ior: 1.5, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.9,
+      transparent: true, opacity: 0.88, side: THREE.DoubleSide,
     }),
     darkGlass: new THREE.MeshPhysicalMaterial({
-      color: color(palette.glass).multiplyScalar(0.55), roughness: 0.08, metalness: 0.22, transmission: 0.12,
-      thickness: 0.1, clearcoat: 1, envMapIntensity: 1.6, transparent: true, opacity: 0.96, side: THREE.DoubleSide,
+      color: color(palette.glass).multiplyScalar(0.55), roughness: 0.05, metalness: 0.22, transmission: 0.22,
+      thickness: 0.14, clearcoat: 1, envMapIntensity: 2, transparent: true, opacity: 0.94, side: THREE.DoubleSide,
     }),
     door: new THREE.MeshStandardMaterial({ color: color(palette.door), map: woodMap, roughness: 0.5, metalness: 0.05 }),
     concrete: new THREE.MeshStandardMaterial({ color: 0xd2d0c8, map: concreteMap, bumpMap: concreteMap, bumpScale: 0.014, roughness: 0.92 }),
@@ -412,7 +418,7 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
       powerPreference: 'high-performance',
       preserveDrawingBuffer: true,
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.08;
@@ -425,10 +431,9 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
     mount.appendChild(renderer.domElement);
 
     const pmrem = new THREE.PMREMGenerator(renderer);
-    const roomEnvironment = new RoomEnvironment();
-    const environment = pmrem.fromScene(roomEnvironment, 0.04);
-    roomEnvironment.dispose();
-    scene.environment = environment.texture;
+    const dayEnvironment = pmrem.fromEquirectangular(daySkyTexture);
+    const nightEnvironment = pmrem.fromEquirectangular(nightSkyTexture);
+    scene.environment = dayEnvironment.texture;
 
     const hemi = new THREE.HemisphereLight(0xe9f3ff, 0x6d7c5a, 1.5);
     scene.add(hemi);
@@ -545,6 +550,21 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
 
     const main = plan.volumes[0];
     const entryX = THREE.MathUtils.clamp(plan.entryX, -main.w / 2 + 1.2, main.w / 2 - 1.2);
+    const walkway = new THREE.Mesh(planeGeometry, materials.concrete);
+    walkway.rotation.x = -Math.PI / 2;
+    walkway.position.set(entryX, 0.008, plan.depth / 2 + 2.4);
+    walkway.scale.set(2.4, 4.6, 1);
+    walkway.receiveShadow = true;
+    scene.add(walkway);
+    if (plan.spec.features.includes('Carport')) {
+      const driveSide = entryX > 0 ? 1 : -1;
+      const driveway = new THREE.Mesh(planeGeometry, materials.concrete);
+      driveway.rotation.x = -Math.PI / 2;
+      driveway.position.set(driveSide * (main.w / 2 - 1.4), 0.006, plan.depth / 2 + 4.3);
+      driveway.scale.set(4.2, 5.6, 1);
+      driveway.receiveShadow = true;
+      scene.add(driveway);
+    }
     const doorHeight = plan.spec.features.includes('High ceiling') ? 2.6 : 2.3;
     addOpening(main, 'front', { u: entryX - main.x, width: 1.55, bottom: 0, top: doorHeight + 0.1, kind: 'door' });
 
@@ -580,7 +600,7 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
       const windowHeight = top - bottom;
       panel(face, volume, u, centerY, width + 0.16, windowHeight + 0.18, 0.06, materials.trim, 0.075);
       panel(face, volume, u, centerY, width - 0.06, windowHeight - 0.06, 0.07, spec.room.kind === 'bathroom' ? materials.darkGlass : materials.glass, 0.14);
-      const mullions = fullHeight ? 3 : width > 2.2 ? 2 : 1;
+      const mullions = fullHeight ? 3 : plan.facadeVariant === 0 ? 1 : plan.facadeVariant === 1 ? 2 : 3;
       for (let index = 1; index < mullions; index += 1) {
         const offset = -width / 2 + (width * index) / mullions;
         panel(face, volume, u + offset, centerY, 0.045, windowHeight, 0.09, materials.metal, 0.17);
@@ -700,7 +720,7 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
       }
       if (plan.finishTier === 'elegant') {
         const frontOpenings = openings.get(volume)?.front ?? [];
-        const count = Math.max(5, Math.floor(volume.w / 0.85));
+        const count = Math.max(5, Math.floor(volume.w / 0.85) + plan.facadeVariant);
         for (let index = 0; index < count; index += 1) {
           const u = -volume.w / 2 + 0.45 + (index * (volume.w - 0.9)) / Math.max(1, count - 1);
           if (frontOpenings.some((opening) => Math.abs(u - opening.u) < opening.width / 2 + 0.12)) continue;
@@ -710,8 +730,9 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
       }
       if (plan.finishTier === 'luxury') {
         const frontOpenings = openings.get(volume)?.front ?? [];
-        for (let index = 0; index < 7; index += 1) {
-          const u = -volume.w * 0.42 + (index * volume.w * 0.84) / 6;
+        const finCount = 5 + plan.facadeVariant;
+        for (let index = 0; index < finCount; index += 1) {
+          const u = -volume.w * 0.42 + (index * volume.w * 0.84) / (finCount - 1);
           if (frontOpenings.some((opening) => Math.abs(u - opening.u) < opening.width / 2 + 0.12)) continue;
           box(0.055, volume.h * 0.9, 0.09, volume.x + u, volume.base + volume.h / 2, volume.z + volume.d / 2 + 0.09, materials.metal, false);
         }
@@ -926,21 +947,22 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
       const upper = plan.volumes.find((volume) => Math.abs(volume.base - floor * plan.floorHeight) < 0.01) ?? main;
       const balconyWidth = Math.min(upper.w * 0.62, 7);
       const balconyY = upper.base - 0.02;
+      const balconyX = upper.x + (plan.massingVariant - 1) * upper.w * 0.12;
       const frontZ = upper.z + upper.d / 2;
-      box(balconyWidth, 0.18, 1.35, upper.x, balconyY, frontZ + 0.68, materials.concrete);
+      box(balconyWidth, 0.18, 1.35, balconyX, balconyY, frontZ + 0.68, materials.concrete);
       const railMaterial = plan.finishTier === 'standard' ? materials.metal : materials.glass;
       if (plan.finishTier === 'standard') {
-        box(balconyWidth, 0.06, 0.06, upper.x, balconyY + 1.05, frontZ + 1.32, materials.metal);
+        box(balconyWidth, 0.06, 0.06, balconyX, balconyY + 1.05, frontZ + 1.32, materials.metal);
         for (let index = 0; index <= 10; index += 1) {
-          const x = upper.x - balconyWidth / 2 + (index * balconyWidth) / 10;
+          const x = balconyX - balconyWidth / 2 + (index * balconyWidth) / 10;
           box(0.045, 1, 0.045, x, balconyY + 0.55, frontZ + 1.32, materials.metal, false);
         }
       } else {
-        box(balconyWidth, 0.85, 0.045, upper.x, balconyY + 0.52, frontZ + 1.32, railMaterial, false);
-        box(balconyWidth, 0.08, 0.08, upper.x, balconyY + 0.98, frontZ + 1.32, materials.metal, false);
+        box(balconyWidth, 0.85, 0.045, balconyX, balconyY + 0.52, frontZ + 1.32, railMaterial, false);
+        box(balconyWidth, 0.08, 0.08, balconyX, balconyY + 0.98, frontZ + 1.32, materials.metal, false);
       }
       for (const side of [-1, 1]) {
-        box(0.07, 1, 0.07, upper.x + side * balconyWidth / 2, balconyY + 0.5, frontZ + 1.32, materials.metal, false);
+        box(0.07, 1, 0.07, balconyX + side * balconyWidth / 2, balconyY + 0.5, frontZ + 1.32, materials.metal, false);
       }
     }
 
@@ -966,7 +988,7 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
       const roofTop = main.base + main.h + (plan.flatRoof ? 0.36 : plan.roofRise * 0.72);
       const rows = Math.max(2, Math.floor(main.w / 2.2));
       for (let row = 0; row < rows; row += 1) {
-        const x = main.x - main.w * 0.36 + (row * main.w * 0.72) / Math.max(1, rows - 1);
+        const x = main.x - main.w * 0.36 + (row * main.w * 0.72) / Math.max(1, rows - 1) + (plan.facadeVariant - 1) * main.w * 0.03;
         const panel = box(1.5, 0.06, 2.35, x, roofTop + 0.18, main.z - main.d * 0.1, materials.solar, false);
         panel.rotation.x = -0.3;
         box(1.55, 0.05, 0.05, x, roofTop + 0.42, main.z - main.d * 0.1 + 1.05, materials.metal, false);
@@ -1048,12 +1070,17 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
     ao.updateGtaoMaterial({ radius: 0.12, distanceExponent: 1.6, thickness: 0.8, samples: 10, screenSpaceRadius: false });
     ao.updatePdMaterial({ rings: 2, samples: 10, radius: 6 });
     composer.addPass(ao);
+    const smaaPass = new SMAAPass();
+    composer.addPass(smaaPass);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.32, 0.6, 0.82);
+    bloomPass.enabled = false;
+    composer.addPass(bloomPass);
     composer.addPass(new OutputPass());
 
     const resize = () => {
       const width = mount.clientWidth || 640;
       const nextHeight = mount.clientHeight || height;
-      const pixelRatio = Math.min(window.devicePixelRatio, 1.5);
+      const pixelRatio = Math.min(window.devicePixelRatio, 2);
       renderer.setSize(width, nextHeight, false);
       composer.setPixelRatio(pixelRatio);
       composer.setSize(width, nextHeight);
@@ -1075,7 +1102,9 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
     const setLighting = (mode: LightingMode) => {
       currentLighting = mode;
       scene.background = mode === 'night' ? nightSkyTexture : daySkyTexture;
+      scene.environment = mode === 'night' ? nightEnvironment.texture : dayEnvironment.texture;
       scene.fog = new THREE.Fog(mode === 'night' ? 0x223146 : 0xe4ecf0, 70, 180);
+      bloomPass.enabled = mode === 'night';
       hemi.intensity = mode === 'night' ? 0.42 : baseLighting.hemi;
       sun.intensity = mode === 'night' ? 0.22 : baseLighting.sun;
       fill.intensity = mode === 'night' ? 0.24 : baseLighting.fill;
@@ -1098,9 +1127,9 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
         setLighting(mode);
         applyPreset(view);
         renderer.setPixelRatio(1);
-        renderer.setSize(1600, 1000, false);
+        renderer.setSize(1920, 1200, false);
         composer.setPixelRatio(1);
-        composer.setSize(1600, 1000);
+        composer.setSize(1920, 1200);
         camera.aspect = 1.6;
         camera.updateProjectionMatrix();
         controls.update();
@@ -1145,6 +1174,8 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
       controls.dispose();
       composer.dispose();
       ao.dispose();
+      smaaPass.dispose();
+      bloomPass.dispose();
       const geometries = new Set<THREE.BufferGeometry>([boxGeometry, cylinderGeometry, sphereGeometry, planeGeometry]);
       const disposedMaterials = new Set<THREE.Material>();
       scene.traverse((object) => {
@@ -1163,7 +1194,8 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
       shadowTexture.dispose();
       daySkyTexture.dispose();
       nightSkyTexture.dispose();
-      environment.texture.dispose();
+      dayEnvironment.texture.dispose();
+      nightEnvironment.texture.dispose();
       pmrem.dispose();
       stateRef.current = null;
       renderer.dispose();
@@ -1175,7 +1207,7 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
     <div className="space-y-2">
       <div ref={mountRef} style={{ height }} className="overflow-hidden rounded-lg border border-agdark-100 bg-agdark-50" />
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-agdark-800 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white">
-        <span>Interactive 3D model</span>
+        <span>Realistic interactive 3D model</span>
         <div className="flex items-center gap-1">
           <button type="button" onClick={() => stateRef.current?.applyPreset('front')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Front</button>
           <button type="button" onClick={() => stateRef.current?.applyPreset('corner')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Corner</button>

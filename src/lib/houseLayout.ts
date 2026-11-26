@@ -38,6 +38,9 @@ export interface HousePlan {
   overhang: number;
   setback: number;
   glazing: number;
+  facadeVariant: 0 | 1 | 2;
+  massingVariant: 0 | 1 | 2;
+  paletteShift: number;
   volumes: MassVolume[];
   floorRooms: Room[][];
   entryX: number;
@@ -138,16 +141,21 @@ export function buildHousePlan(spec: HouseDesignSpec, seed = 1): HousePlan {
   const width = clamp(footprintArea / depth, 6.2, 52);
   const height = floors * floorHeight;
   const glazing = style.glazing + (finishTier === 'luxury' ? 0.18 : finishTier === 'elegant' ? 0.09 : 0);
+  const variation = randomFrom((seed || 1) * 31 + 17);
+  const facadeVariant = Math.floor(variation() * 3) as 0 | 1 | 2;
+  const massingVariant = Math.floor(variation() * 3) as 0 | 1 | 2;
+  const paletteShift = (variation() - 0.5) * 0.1;
+  const roofVariation = 0.86 + variation() * 0.32;
 
   const volumes: MassVolume[] = [{ x: 0, z: 0, w: width, d: depth, base: 0, h: floorHeight, role: 'main' }];
 
   if (floors > 1) {
     const upperWidth = width * (1 - style.setback * 2);
     const upperDepth = depth * (1 - style.setback * 1.2);
-    const offsetX = style.setback > 0.1 ? width * style.setback * 0.35 : 0;
+    const offsetX = (style.setback > 0.1 ? width * style.setback * 0.35 : 0) + (massingVariant - 1) * width * 0.06;
     volumes.push({
       x: offsetX,
-      z: -depth * style.setback * 0.35,
+      z: -depth * style.setback * 0.35 + (facadeVariant === 2 ? depth * 0.05 : 0),
       w: upperWidth,
       d: upperDepth,
       base: floorHeight,
@@ -160,8 +168,8 @@ export function buildHousePlan(spec: HouseDesignSpec, seed = 1): HousePlan {
     const thirdWidth = width * (1 - style.setback * 3.1);
     const thirdDepth = depth * (1 - style.setback * 2.2);
     volumes.push({
-      x: width * style.setback * 0.15,
-      z: -depth * style.setback * 0.55,
+      x: width * style.setback * 0.15 + (massingVariant - 1) * width * 0.04,
+      z: -depth * style.setback * 0.55 + (facadeVariant === 0 ? depth * 0.04 : 0),
       w: thirdWidth,
       d: thirdDepth,
       base: floorHeight * 2,
@@ -173,8 +181,9 @@ export function buildHousePlan(spec: HouseDesignSpec, seed = 1): HousePlan {
   const hasOffice = spec.features.includes('Home office');
   if (floors === 1 && (spec.bedrooms >= 4 || hasOffice)) {
     const wingWidth = width * 0.34;
+    const wingSide = massingVariant === 0 ? -1 : 1;
     volumes.push({
-      x: width / 2 + wingWidth / 2 - 0.55,
+      x: wingSide * (width / 2 + wingWidth / 2 - 0.55),
       z: -depth * 0.16,
       w: wingWidth,
       d: depth * 0.68,
@@ -185,9 +194,10 @@ export function buildHousePlan(spec: HouseDesignSpec, seed = 1): HousePlan {
   }
 
   if (finishTier !== 'standard' && width > 9) {
+    const baySide = facadeVariant === 1 ? 1 : -1;
     volumes.push({
-      x: -width * 0.26,
-      z: depth / 2 + 0.65,
+      x: baySide * width * 0.26,
+      z: depth / 2 + (facadeVariant === 2 ? 0.35 : 0.65),
       w: clamp(width * 0.26, 2.4, 5.6),
       d: 1.35,
       base: 0,
@@ -270,7 +280,8 @@ export function buildHousePlan(spec: HouseDesignSpec, seed = 1): HousePlan {
   }
 
   const living = floorRooms[0]?.find((room) => room.kind === 'living');
-  const entryX = living ? living.x : width * 0.18;
+  const entryShift = (variation() - 0.5) * Math.min(2.4, width * 0.12);
+  const entryX = clamp((living ? living.x : width * 0.18) + entryShift, -width / 2 + 1.2, width / 2 - 1.2);
 
   return {
     spec,
@@ -282,10 +293,13 @@ export function buildHousePlan(spec: HouseDesignSpec, seed = 1): HousePlan {
     height,
     footprintArea,
     flatRoof: style.roof === 'flat',
-    roofRise: style.ridge,
+    roofRise: style.ridge * roofVariation,
     overhang: style.overhang,
     setback: style.setback,
     glazing,
+    facadeVariant,
+    massingVariant,
+    paletteShift,
     volumes,
     floorRooms,
     entryX,

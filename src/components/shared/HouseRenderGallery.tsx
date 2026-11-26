@@ -74,7 +74,7 @@ export default function HouseRenderGallery({
         </div>
       ) : !rendering ? (
         <p className="rounded-lg border border-dashed border-agdark-200 p-3 text-center text-[10px] leading-4 text-agdark-500">
-          Generate a design to create professional 1600×1000 renders from the same model.
+          Generate a design to create professional 1920×1200 renders from the same model.
         </p>
       ) : null}
     </div>
