@@ -1,4 +1,5 @@
 const DEFAULT_IMAGE_MODEL = 'gemini-nano-banana-2.1';
+const FALLBACK_IMAGE_MODELS = ['gemini-3.1-flash-image', 'gemini-2.5-flash-image'];
 const DEFAULT_IMAGE_SIZE = '1K';
 const DEFAULT_ASPECT_RATIO = '16:9';
 const MAX_PROMPT_CHARS = 4000;
@@ -6,21 +7,6 @@ const MAX_IMAGE_CHARS = 8_000_000;
 const RATE_LIMIT = { windowMs: 5 * 60 * 1000, max: 12 };
 
 export const maxDuration = 120;
-
-interface GeminiInlineData {
-  mimeType?: string;
-  mime_type?: string;
-  data?: string;
-}
-
-interface GeminiImageResponse {
-  candidates?: {
-    content?: { parts?: { text?: string; inlineData?: GeminiInlineData; inline_data?: GeminiInlineData }[] };
-    finishReason?: string;
-  }[];
-  promptFeedback?: { blockReason?: string };
-  output_image?: { data?: string; mimeType?: string; mime_type?: string };
-}
 
 const hits = new Map<string, number[]>();
 
@@ -37,23 +23,64 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 }
 
-function imageFrom(data: GeminiImageResponse): string | null {
-  const output = data.output_image;
-  if (output?.data) {
-    const mimeType = output.mimeType || output.mime_type || 'image/png';
-    return `data:${mimeType};base64,${output.data}`;
+function findImage(value: unknown): { image: string; mimeType: string } | null {
+  if (!value || typeof value !== 'object') return null;
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = findImage(item);
+      if (found) return found;
+    }
+    return null;
   }
 
-  for (const candidate of data.candidates ?? []) {
-    for (const part of candidate.content?.parts ?? []) {
-      const inline = part.inlineData ?? part.inline_data;
-      if (inline?.data) {
-        const mimeType = inline.mimeType || inline.mime_type || 'image/png';
-        return `data:${mimeType};base64,${inline.data}`;
-      }
+  const record = value as Record<string, unknown>;
+  const direct = record.output_image ?? record.outputImage ?? record.inlineData ?? record.inline_data;
+  if (direct && typeof direct === 'object') {
+    const image = direct as Record<string, unknown>;
+    const data = typeof image.data === 'string' ? image.data : '';
+    const mimeType = typeof image.mime_type === 'string'
+      ? image.mime_type
+      : typeof image.mimeType === 'string' ? image.mimeType : 'image/png';
+    if (data.length > 1000 && /^[A-Za-z0-9+/=_-]+$/.test(data)) {
+      return { image: `data:${mimeType};base64,${data}`, mimeType };
     }
   }
+
+  for (const key of ['output', 'steps', 'candidates', 'content', 'parts']) {
+    const nested = record[key];
+    if (nested && typeof nested === 'object') {
+      const found = findImage(nested);
+      if (found) return found;
+    }
+  }
+  for (const [key, nested] of Object.entries(record)) {
+    if (key === 'input' || key === 'user_input' || !nested || typeof nested !== 'object') continue;
+    const found = findImage(nested);
+    if (found) return found;
+  }
   return null;
+}
+
+function upstreamError(text: string, status: number): string {
+  let detail = text.replace(/\s+/g, ' ').trim().slice(0, 300);
+  try {
+    const parsed = JSON.parse(text) as { error?: { message?: string }; message?: string };
+    detail = (parsed.error?.message || parsed.message || detail).slice(0, 300);
+  } catch {
+    detail = detail || 'unknown error';
+  }
+  return `AI renderer error (${status}): ${detail}`;
+}
+
+function isModelError(status: number, text: string): boolean {
+  if (status === 404) return true;
+  return (status === 400 || status === 403) && /model|not found|not supported|unsupported|permission|access/i.test(text);
+}
+
+function responseFormat(model: string, aspectRatio: string, imageSize: string) {
+  const format: Record<string, string> = { type: 'image', aspect_ratio: aspectRatio };
+  if (!/2\.5-flash-image/i.test(model)) format.image_size = imageSize;
+  return format;
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -81,46 +108,63 @@ export async function POST(request: Request): Promise<Response> {
     : '';
   if (!prompt) return json({ error: 'A render prompt is required.' }, 400);
 
-  const model = process.env.GEMINI_IMAGE_MODEL || DEFAULT_IMAGE_MODEL;
+  const configuredModel = process.env.GEMINI_IMAGE_MODEL?.trim();
+  const models = configuredModel ? [configuredModel] : [DEFAULT_IMAGE_MODEL, ...FALLBACK_IMAGE_MODELS];
   const imageSize = process.env.GEMINI_IMAGE_SIZE || DEFAULT_IMAGE_SIZE;
   const aspectRatio = process.env.GEMINI_IMAGE_ASPECT_RATIO || DEFAULT_ASPECT_RATIO;
-  let res: Response;
+  const mimeType = `image/${match[1].toLowerCase()}`;
+  let lastError = 'No Gemini image model is available for this key.';
 
-  try {
-    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [
-            { text: prompt },
-            { inlineData: { mimeType: `image/${match[1].toLowerCase()}`, data: match[2] } },
-          ],
-        }],
-        generationConfig: {
-          responseModalities: ['TEXT', 'IMAGE'],
-          imageConfig: { aspectRatio, imageSize },
+  for (const model of models) {
+    let res: Response;
+    try {
+      res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-goog-api-key': apiKey,
+          'Api-Revision': '2026-05-20',
         },
-      }),
-      signal: AbortSignal.timeout(90_000),
-    });
-  } catch (err) {
-    console.error('Gemini image request failed', err);
-    return json({ error: 'The AI renderer is unavailable right now.' }, 502);
+        body: JSON.stringify({
+          model,
+          store: false,
+          input: [
+            { type: 'text', text: prompt },
+            { type: 'image', mime_type: mimeType, data: match[2] },
+          ],
+          response_format: responseFormat(model, aspectRatio, imageSize),
+        }),
+        signal: AbortSignal.timeout(90_000),
+      });
+    } catch (err) {
+      console.error('Gemini image request failed', err);
+      lastError = 'The AI renderer is unavailable right now.';
+      continue;
+    }
+
+    const text = await res.text();
+    if (!res.ok) {
+      console.error('Gemini image error', res.status, text.slice(0, 500));
+      lastError = upstreamError(text, res.status);
+      if (isModelError(res.status, text)) continue;
+      return json({ error: lastError }, res.status === 429 ? 429 : 502);
+    }
+
+    let data: unknown;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      console.error('Gemini returned invalid JSON', text.slice(0, 500));
+      return json({ error: 'The AI renderer returned an invalid response.' }, 502);
+    }
+
+    const rendered = findImage(data);
+    if (!rendered) {
+      console.error('Gemini returned no image', text.slice(0, 500));
+      return json({ error: 'The AI renderer could not create this view. Please try again.' }, 502);
+    }
+    return json({ image: rendered.image, source: 'gemini' });
   }
 
-  if (!res.ok) {
-    console.error('Gemini image error', res.status, (await res.text()).slice(0, 500));
-    return json({ error: 'The AI renderer is unavailable right now. Please try again shortly.' }, 502);
-  }
-
-  const data = (await res.json()) as GeminiImageResponse;
-  const rendered = imageFrom(data);
-  if (!rendered) {
-    console.error('Gemini returned no image', data.promptFeedback?.blockReason ?? data.candidates?.[0]?.finishReason);
-    return json({ error: 'The AI renderer could not create this view. Please try again.' }, 502);
-  }
-
-  return json({ image: rendered, source: 'gemini' });
+  return json({ error: lastError }, 502);
 }
