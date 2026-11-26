@@ -1,6 +1,5 @@
 import { DEFAULT_DISCLAIMER } from './constants';
 import { FINISH_PACKAGES, DESIGN_PACKAGE } from './companyInfo';
-import { buildHouseConceptViews } from './houseConceptSvg';
 import { buildHousePlan } from './houseLayout';
 
 export const HOME_TYPES = ['Bungalow', '2-Storey', '3-Storey'] as const;
@@ -30,14 +29,6 @@ export interface HouseDesignEstimate {
   design: number;
   total: number;
   disclaimer: string;
-}
-
-export interface GeneratedDesignImage {
-  image: string;
-  mimeType: string;
-  source: 'gemini' | 'concept';
-  views?: { label: string; image: string }[];
-  note?: string;
 }
 
 export const FINISH_OPTIONS = FINISH_PACKAGES.map((p) => p.shortName);
@@ -144,44 +135,3 @@ export function isHouseDesignPrompt(text: string): boolean {
   return value.includes('architectural rendering') || (designIntent && value.includes('floor area') && value.includes('sqm'));
 }
 
-export const designImageFileName = (image: string) =>
-  image.startsWith('data:image/svg+xml') ? 'ag-house-design.svg' : 'ag-house-design.png';
-
-function localConceptFallback(prompt: string): GeneratedDesignImage {
-  const views = buildHouseConceptViews(specFromPrompt(prompt));
-  return {
-    image: views[0].image,
-    mimeType: 'image/svg+xml',
-    source: 'concept',
-    views,
-    note: 'Live AI rendering is unavailable, so this is an AG architectural concept generated from your specs — drag to view all sides.',
-  };
-}
-
-export async function generateHouseDesignImage(prompt: string): Promise<GeneratedDesignImage> {
-  try {
-    const res = await fetch('/api/design-image', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: prompt.trim().slice(0, 3000) }),
-    });
-    const data = (await res.json().catch(() => ({}))) as {
-      image?: string;
-      mimeType?: string;
-      source?: 'gemini' | 'concept';
-      views?: { label: string; image: string }[];
-      note?: string;
-      error?: string;
-    };
-    if (!res.ok || !data.image) return localConceptFallback(prompt);
-    return {
-      image: data.image,
-      mimeType: data.mimeType || 'image/png',
-      source: data.source || 'gemini',
-      views: data.views,
-      note: data.note,
-    };
-  } catch {
-    return localConceptFallback(prompt);
-  }
-}
