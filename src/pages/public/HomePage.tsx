@@ -337,16 +337,17 @@ export default function HomePage() {
               <div>
                 <p className="eyebrow">Try it now</p>
                 <h3 className="mt-2 font-display text-2xl font-bold uppercase tracking-wide text-agdark-800">
-                  From specs to a 3D massing model
+                  From specs to realistic house renders
                 </h3>
               </div>
               <p className="text-sm leading-7 text-agdark-600">
                 Choose the house type, floor area, finish, style, and must-haves. The studio shows a rough
-                cost, builds a design brief, and renders a real-time 3D model you can drag and zoom.
+                cost, builds a design brief, and renders a real-time 3D massing model you can drag and zoom.
               </p>
               <ul className="grid gap-3">
                 {[
                   'Rotate 360° and zoom in on every side',
+                  'Massing / Realistic toggle for each view',
                   'Bungalow, 2-storey, or 3-storey massing',
                   'Finish palettes, roof styles, balcony, carport, and solar',
                   'Preliminary cost before you commit',
@@ -357,8 +358,8 @@ export default function HomePage() {
                 ))}
               </ul>
               <div className="rounded-lg border border-agorange-200 bg-agorange-50 p-4 text-xs leading-5 text-agdark-700">
-                This is a concept massing model. Signed and sealed construction documents come with the
-                Master Plan Design Package.
+                The 3D model is a concept massing guide, and the realistic images are AI renders from that geometry.
+                Signed and sealed construction documents come with the Master Plan Design Package.
               </div>
               <Link to="/services/master-plan-design-package" className="btn-outline-white inline-flex w-fit border-agdark-800 text-agdark-800 hover:bg-agdark-800 hover:text-white">
                 See the full package <ArrowRight size={15} />

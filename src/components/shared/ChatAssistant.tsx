@@ -252,7 +252,7 @@ export default function ChatAssistant() {
                 {onTeamTab
                   ? 'Chat with a real person from our team'
                   : onDesignTab
-                    ? 'Specs, estimate, prompt and concept render'
+                    ? 'Specs, estimate, prompt and 3D massing / realistic renders'
                     : 'AI answers — please confirm details with our team'}
               </p>
             </div>

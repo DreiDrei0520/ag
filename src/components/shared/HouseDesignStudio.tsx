@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Check, Copy, Image as ImageIcon, Send, Shuffle, Sparkles } from 'lucide-react';
+import { Check, Copy, Image as ImageIcon, Loader2, Send, Shuffle, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { DESIGN_PACKAGE } from '../../lib/companyInfo';
 import House3DViewer, { type House3DViewerHandle, type HouseRenderCapture, type LightingMode, type RenderView } from './House3DViewer';
-import HouseRenderGallery from './HouseRenderGallery';
+import HouseRenderGallery, { HOUSE_RENDER_SHOTS, type HouseRenderMode } from './HouseRenderGallery';
 import {
   DESIGN_FEATURES,
   DESIGN_STYLES,
@@ -13,6 +13,7 @@ import {
   createHouseDesignSpec,
   estimateHouseDesign,
   formatPeso,
+  generatePhotorealisticRender,
   type DesignFeature,
   type FinishOption,
   type HomeType,
@@ -23,15 +24,6 @@ import {
 interface HouseDesignStudioProps {
   onAskAssistant: (prompt: string) => void;
 }
-
-const RENDER_SHOTS: { view: RenderView; lighting: LightingMode }[] = [
-  { view: 'front', lighting: 'day' },
-  { view: 'corner', lighting: 'day' },
-  { view: 'aerial', lighting: 'day' },
-  { view: 'front', lighting: 'night' },
-  { view: 'corner', lighting: 'night' },
-  { view: 'aerial', lighting: 'night' },
-];
 
 interface ChipProps {
   active: boolean;
@@ -106,22 +98,73 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
   const [note, setNote] = useState('');
   const [copied, setCopied] = useState(false);
   const [renders, setRenders] = useState<HouseRenderCapture[]>([]);
-  const [rendering, setRendering] = useState(false);
+  const [realisticRenders, setRealisticRenders] = useState<HouseRenderCapture[]>([]);
+  const [renderMode, setRenderMode] = useState<HouseRenderMode>('massing');
+  const [generating, setGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState('');
+  const [generationError, setGenerationError] = useState('');
+  const [activeView, setActiveView] = useState<RenderView>('corner');
+  const [activeLighting, setActiveLighting] = useState<LightingMode>('day');
   const viewerRef = useRef<House3DViewerHandle>(null);
+  const autoGenerateRef = useRef(false);
+  const generationIdRef = useRef(0);
 
   const captureRenders = useCallback(() => {
     const viewer = viewerRef.current;
-    if (!viewer) {
-      setRendering(false);
-      return;
-    }
-    setRendering(true);
-    const shots = RENDER_SHOTS.map(({ view, lighting }) => {
+    if (!viewer) return [];
+    return HOUSE_RENDER_SHOTS.map(({ view, lighting }) => {
       const image = viewer.capture(view, lighting);
       return image ? { image, view, lighting } : null;
     }).filter((shot): shot is HouseRenderCapture => shot !== null);
-    setRenders(shots);
-    setRendering(false);
+  }, []);
+
+  const generateRealistic = useCallback(async (
+    captures: HouseRenderCapture[],
+    designSpec: HouseDesignSpec,
+    basePrompt: string,
+  ) => {
+    const id = generationIdRef.current + 1;
+    generationIdRef.current = id;
+    setGenerating(true);
+    setGenerationError('');
+    setGenerationProgress('Capturing massing views…');
+    setRealisticRenders([]);
+
+    const completed: HouseRenderCapture[] = [];
+    const failures: string[] = [];
+    const promptBase = basePrompt || buildDesignPrompt(designSpec, estimateHouseDesign(designSpec));
+
+    for (let index = 0; index < captures.length; index += 1) {
+      if (generationIdRef.current !== id) return;
+      const shot = captures[index];
+      setGenerationProgress(`Generating realistic render ${index + 1} of ${captures.length} — ${shot.view} ${shot.lighting}…`);
+      const viewPrompt = [
+        promptBase,
+        `View: ${shot.view} camera. Lighting: ${shot.lighting}.`,
+        'Use the attached PNG as the exact structural reference. Keep the same footprint, floor count, roof form, openings, balcony, carport, and solar placement.',
+        'Convert only the materials, lighting, vegetation, and finish quality into a photorealistic architectural exterior render. Do not redesign or simplify the house.',
+        'No text, no logos, no watermarks.',
+      ].join('\n');
+
+      try {
+        const image = await generatePhotorealisticRender(shot.image, viewPrompt);
+        if (generationIdRef.current !== id) return;
+        completed.push({ image, view: shot.view, lighting: shot.lighting });
+        setRealisticRenders([...completed]);
+      } catch (err) {
+        failures.push(`${shot.view} ${shot.lighting}: ${err instanceof Error ? err.message : 'failed'}`);
+      }
+    }
+
+    if (generationIdRef.current !== id) return;
+    if (completed.length) setRenderMode('realistic');
+    if (failures.length) {
+      setGenerationError(`Some views could not be generated (${failures.join('; ')}). The successful views are still available.`);
+    } else {
+      setNote('Photorealistic exterior renders generated from the 3D massing model. Switch views with the tabs above.');
+    }
+    setGenerationProgress('');
+    setGenerating(false);
   }, []);
 
   useEffect(() => {
@@ -129,10 +172,17 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
       setRenders([]);
       return;
     }
-    setRendering(true);
-    const timer = window.setTimeout(captureRenders, 120);
+    const shouldGenerate = autoGenerateRef.current;
+    autoGenerateRef.current = false;
+    const timer = window.setTimeout(() => {
+      const shots = captureRenders();
+      setRenders(shots);
+      if (shouldGenerate && shots.length) {
+        void generateRealistic(shots, modelSpec, result?.prompt ?? '');
+      }
+    }, 120);
     return () => window.clearTimeout(timer);
-  }, [modelSpec, variant, captureRenders]);
+  }, [modelSpec, variant, captureRenders, generateRealistic, result]);
 
   const update = <K extends keyof HouseDesignSpec>(key: K, value: HouseDesignSpec[K]) => {
     setSpec((current) => ({ ...current, [key]: value }));
@@ -155,8 +205,16 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
 
   const generate = () => {
     const estimate = estimateHouseDesign(spec);
+    generationIdRef.current += 1;
+    autoGenerateRef.current = false;
     setResult({ estimate, prompt: buildDesignPrompt(spec, estimate) });
     setModelSpec(null);
+    setRenders([]);
+    setRealisticRenders([]);
+    setRenderMode('massing');
+    setGenerating(false);
+    setGenerationProgress('');
+    setGenerationError('');
     setNote('');
     setCopied(false);
   };
@@ -182,9 +240,34 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
 
   const render = () => {
     if (!result) return;
+    generationIdRef.current += 1;
+    autoGenerateRef.current = true;
+    setRealisticRenders([]);
+    setRenderMode('massing');
+    setGenerating(false);
+    setGenerationProgress('');
+    setGenerationError('');
     setModelSpec({ ...spec });
     setVariant((current) => nextVariant(current));
-    setNote('Fresh 3D design variation with realistic day/night renders generated from your specs. Use Shuffle for another layout, or the Floor plan button to inspect room allocation. For construction-ready plans, avail the design package.');
+    setNote('Capturing the 3D massing model and generating photorealistic exterior renders…');
+  };
+
+  const shuffle = () => {
+    if (!modelSpec) return;
+    generationIdRef.current += 1;
+    autoGenerateRef.current = true;
+    setRealisticRenders([]);
+    setRenderMode('massing');
+    setGenerating(false);
+    setGenerationProgress('');
+    setGenerationError('');
+    setVariant((current) => nextVariant(current));
+    setNote('New layout variation. Regenerating realistic views…');
+  };
+
+  const regenerateRealistic = () => {
+    if (!renders.length) return;
+    void generateRealistic(renders, modelSpec ?? spec, result?.prompt ?? '');
   };
 
   return (
@@ -311,9 +394,14 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
           </div>
 
           <div className="flex gap-2">
-            <button type="button" onClick={render} className="btn-primary h-9 flex-1 px-3 text-xs">
-              <ImageIcon size={14} />
-              Generate 3D design
+            <button
+              type="button"
+              onClick={render}
+              disabled={generating}
+              className="btn-primary h-9 flex-1 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {generating ? <Loader2 size={14} className="animate-spin" /> : <ImageIcon size={14} />}
+              {generating ? 'Generating realistic views…' : 'Generate 3D design'}
             </button>
             <button
               type="button"
@@ -325,8 +413,8 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
             </button>
             <button
               type="button"
-              onClick={() => setVariant((current) => nextVariant(current))}
-              disabled={!modelSpec}
+              onClick={shuffle}
+              disabled={!modelSpec || generating}
               title="Generate another 3D variation"
               aria-label="Generate another 3D variation"
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-agdark-100 text-agdark-800 hover:bg-agdark-50 disabled:cursor-not-allowed disabled:opacity-40"
@@ -337,8 +425,29 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
 
           {modelSpec ? (
             <div className="space-y-2">
-              <House3DViewer ref={viewerRef} spec={modelSpec} height={340} seed={variant} />
-              <HouseRenderGallery renders={renders} rendering={rendering} onGenerate={captureRenders} disabled={!modelSpec} />
+              <House3DViewer
+                ref={viewerRef}
+                spec={modelSpec}
+                height={340}
+                seed={variant}
+                onViewChange={setActiveView}
+                onLightingChange={setActiveLighting}
+              />
+              <HouseRenderGallery
+                massing={renders}
+                realistic={realisticRenders}
+                mode={renderMode}
+                onModeChange={setRenderMode}
+                view={activeView}
+                lighting={activeLighting}
+                onViewChange={setActiveView}
+                onLightingChange={setActiveLighting}
+                generating={generating}
+                progress={generationProgress}
+                error={generationError}
+                onGenerate={regenerateRealistic}
+                disabled={!modelSpec}
+              />
               {note ? <p className="text-[10px] leading-4 text-agdark-500">{note}</p> : null}
             </div>
           ) : null}

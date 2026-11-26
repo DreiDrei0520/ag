@@ -6,6 +6,7 @@ import react from '@vitejs/plugin-react';
 // work locally. Maps each request path to its function file and calls the matching method export.
 const DEV_ROUTES: { prefix: string; file: string }[] = [
   { prefix: '/api/chat', file: '/api/chat.ts' },
+  { prefix: '/api/design-render', file: '/api/design-render.ts' },
   { prefix: '/api/media/', file: '/api/media/[id].ts' },
 ];
 

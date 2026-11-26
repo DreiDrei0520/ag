@@ -110,6 +110,18 @@ export function buildDesignPrompt(spec: HouseDesignSpec, estimate: HouseDesignEs
   ].join('\n');
 }
 
+export async function generatePhotorealisticRender(image: string, prompt: string): Promise<string> {
+  const response = await fetch('/api/design-render', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image, prompt }),
+  });
+  const data = await response.json().catch(() => null) as { image?: string; error?: string } | null;
+  if (!response.ok) throw new Error(data?.error ?? 'AI rendering failed. Please try again.');
+  if (!data?.image) throw new Error('The AI renderer returned no image. Please try again.');
+  return data.image;
+}
+
 export function specFromPrompt(prompt: string): HouseDesignSpec {
   const spec = createHouseDesignSpec();
   const value = prompt.toLowerCase();

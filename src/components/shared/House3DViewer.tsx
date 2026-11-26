@@ -14,6 +14,8 @@ interface House3DViewerProps {
   spec: HouseDesignSpec;
   height?: number;
   seed?: number;
+  onViewChange?: (view: RenderView) => void;
+  onLightingChange?: (lighting: LightingMode) => void;
 }
 
 export type RenderView = 'front' | 'corner' | 'aerial';
@@ -27,6 +29,7 @@ export interface HouseRenderCapture {
 
 export interface House3DViewerHandle {
   capture: (view: RenderView, lighting: LightingMode) => string | null;
+  setView: (view: RenderView) => void;
   setLighting: (lighting: LightingMode) => void;
 }
 
@@ -379,16 +382,21 @@ function faceTransform(face: ExteriorFace, volume: MassVolume, u: number, y: num
 }
 
 const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(function House3DViewer(
-  { spec, height = 420, seed = 0 },
+  { spec, height = 420, seed = 0, onViewChange, onLightingChange },
   ref,
 ) {
   const mountRef = useRef<HTMLDivElement>(null);
   const stateRef = useRef<ViewerState | null>(null);
   const [showPlan, setShowPlan] = useState(false);
+  const [activeView, setActiveView] = useState<RenderView>('corner');
   const [lightingMode, setLightingMode] = useState<LightingMode>('day');
 
   useImperativeHandle(ref, () => ({
     capture: (view, lighting) => stateRef.current?.capture(view, lighting) ?? null,
+    setView: (view) => {
+      stateRef.current?.applyPreset(view);
+      setActiveView(view);
+    },
     setLighting: (lighting) => {
       stateRef.current?.setLighting(lighting);
       setLightingMode(lighting);
@@ -1262,25 +1270,47 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
     };
   }, [spec, height, seed]);
 
+  const selectView = (view: RenderView) => {
+    stateRef.current?.applyPreset(view);
+    setActiveView(view);
+    onViewChange?.(view);
+  };
+
+  const selectLighting = (lighting: LightingMode) => {
+    stateRef.current?.setLighting(lighting);
+    setLightingMode(lighting);
+    onLightingChange?.(lighting);
+  };
+
   return (
     <div className="space-y-2">
       <div ref={mountRef} style={{ height }} className="overflow-hidden rounded-lg border border-agdark-100 bg-agdark-50" />
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-agdark-800 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white">
-        <span>Realistic interactive 3D model</span>
+        <span>Interactive 3D massing model</span>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={() => stateRef.current?.applyPreset('front')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Front</button>
-          <button type="button" onClick={() => stateRef.current?.applyPreset('corner')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Corner</button>
-          <button type="button" onClick={() => stateRef.current?.applyPreset('aerial')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Aerial</button>
+          {(['front', 'corner', 'aerial'] as RenderView[]).map((view) => (
+            <button
+              key={view}
+              type="button"
+              onClick={() => selectView(view)}
+              aria-pressed={activeView === view}
+              className={`rounded border px-1.5 py-0.5 text-[9px] capitalize ${activeView === view ? 'border-agorange text-agorange' : 'border-agdark-600 hover:bg-agdark-700'}`}
+            >
+              {view}
+            </button>
+          ))}
           <button
             type="button"
-            onClick={() => { stateRef.current?.setLighting('day'); setLightingMode('day'); }}
+            onClick={() => selectLighting('day')}
+            aria-pressed={lightingMode === 'day'}
             className={`rounded border px-1.5 py-0.5 text-[9px] ${lightingMode === 'day' ? 'border-agorange text-agorange' : 'border-agdark-600 hover:bg-agdark-700'}`}
           >
             Day
           </button>
           <button
             type="button"
-            onClick={() => { stateRef.current?.setLighting('night'); setLightingMode('night'); }}
+            onClick={() => selectLighting('night')}
+            aria-pressed={lightingMode === 'night'}
             className={`rounded border px-1.5 py-0.5 text-[9px] ${lightingMode === 'night' ? 'border-agorange text-agorange' : 'border-agdark-600 hover:bg-agdark-700'}`}
           >
             Night
