@@ -4,7 +4,6 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
-import { SMAAPass } from 'three/examples/jsm/postprocessing/SMAAPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import HouseFloorPlan from './HouseFloorPlan';
@@ -1070,8 +1069,6 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
     ao.updateGtaoMaterial({ radius: 0.12, distanceExponent: 1.6, thickness: 0.8, samples: 10, screenSpaceRadius: false });
     ao.updatePdMaterial({ rings: 2, samples: 10, radius: 6 });
     composer.addPass(ao);
-    const smaaPass = new SMAAPass();
-    composer.addPass(smaaPass);
     const bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.32, 0.6, 0.82);
     bloomPass.enabled = false;
     composer.addPass(bloomPass);
@@ -1174,7 +1171,6 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
       controls.dispose();
       composer.dispose();
       ao.dispose();
-      smaaPass.dispose();
       bloomPass.dispose();
       const geometries = new Set<THREE.BufferGeometry>([boxGeometry, cylinderGeometry, sphereGeometry, planeGeometry]);
       const disposedMaterials = new Set<THREE.Material>();
