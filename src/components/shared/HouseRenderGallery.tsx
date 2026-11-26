@@ -63,6 +63,7 @@ export default function HouseRenderGallery({
   const fallback = findShot(massing, view, lighting);
   const shown = selected ?? fallback;
   const usingFallback = mode === 'realistic' && !selected;
+  const downloadExtension = shown?.image.startsWith('data:image/svg+xml') ? 'svg' : 'png';
 
   return (
     <div className="space-y-2">
@@ -78,7 +79,7 @@ export default function HouseRenderGallery({
           className="inline-flex items-center gap-1 rounded border border-agorange px-1.5 py-0.5 text-[9px] text-agorange hover:bg-agdark-700 disabled:cursor-not-allowed disabled:opacity-40"
         >
           {generating ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
-          {generating ? 'Generating…' : realistic.length ? 'Regenerate realistic' : 'Generate realistic'}
+          {generating ? 'Generating…' : realistic.length ? 'Regenerate renders' : 'Generate renders'}
         </button>
       </div>
 
@@ -142,7 +143,7 @@ export default function HouseRenderGallery({
 
       {generating ? (
         <p className="text-[10px] leading-4 text-agdark-500">
-          {progress || 'Capturing the 3D model and generating photorealistic exterior views…'}
+          {progress || 'Capturing the 3D model and generating AI concept exterior views…'}
         </p>
       ) : null}
 
@@ -159,11 +160,11 @@ export default function HouseRenderGallery({
             </span>
             <a
               href={shown.image}
-              download={`ag-house-${view}-${lighting}-${mode}.png`}
+              download={`ag-house-${view}-${lighting}-${mode}.${downloadExtension}`}
               className="inline-flex items-center gap-1 text-[9px] font-bold text-agorange hover:underline"
             >
               <Download size={11} />
-              PNG
+              {downloadExtension.toUpperCase()}
             </a>
           </figcaption>
         </figure>
@@ -171,13 +172,13 @@ export default function HouseRenderGallery({
         <p className="rounded-lg border border-dashed border-agdark-200 p-3 text-center text-[10px] leading-4 text-agdark-500">
           {generating
             ? 'Capturing the first massing view…'
-            : 'Generate a design to create a massing preview and photorealistic exterior renders.'}
+            : 'Generate a design to create a massing preview and AI concept exterior renders.'}
         </p>
       )}
 
       {usingFallback && shown ? (
         <p className="text-[9px] leading-4 text-agdark-400">
-          No AI render for this tab yet. Showing the 3D massing capture until you generate realistic views.
+          No AI concept render for this tab yet. Showing the 3D massing capture until you generate views.
         </p>
       ) : null}
 

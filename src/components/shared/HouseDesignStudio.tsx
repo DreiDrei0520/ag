@@ -137,7 +137,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     for (let index = 0; index < captures.length; index += 1) {
       if (generationIdRef.current !== id) return;
       const shot = captures[index];
-      setGenerationProgress(`Generating realistic render ${index + 1} of ${captures.length} — ${shot.view} ${shot.lighting}…`);
+      setGenerationProgress(`Generating concept render ${index + 1} of ${captures.length} — ${shot.view} ${shot.lighting}…`);
       const viewPrompt = [
         promptBase,
         `View: ${shot.view} camera. Lighting: ${shot.lighting}.`,
@@ -161,7 +161,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     if (failures.length) {
       setGenerationError(`Some views could not be generated (${failures.join('; ')}). The successful views are still available.`);
     } else {
-      setNote('Photorealistic exterior renders generated from the 3D massing model. Switch views with the tabs above.');
+      setNote('AI concept exterior renders generated from the 3D massing model. Switch views with the tabs above.');
     }
     setGenerationProgress('');
     setGenerating(false);

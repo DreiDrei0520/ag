@@ -1,14 +1,17 @@
 const DEFAULT_IMAGE_MODEL = 'gemini-nano-banana-2.1';
 const FALLBACK_IMAGE_MODELS = ['gemini-3.1-flash-image', 'gemini-2.5-flash-image'];
+const DEFAULT_TEXT_MODEL = 'gemini-3.5-flash-lite';
 const DEFAULT_IMAGE_SIZE = '1K';
 const DEFAULT_ASPECT_RATIO = '16:9';
 const MAX_PROMPT_CHARS = 4000;
 const MAX_IMAGE_CHARS = 8_000_000;
+const MAX_SVG_CHARS = 120_000;
 const RATE_LIMIT = { windowMs: 5 * 60 * 1000, max: 12 };
 
 export const maxDuration = 120;
 
 const hits = new Map<string, number[]>();
+let imageModelsBlocked = false;
 
 function rateLimited(ip: string): boolean {
   const now = Date.now();
@@ -87,6 +90,83 @@ function responseFormat(model: string, aspectRatio: string, imageSize: string) {
   return format;
 }
 
+function extractSvg(raw: string): string | null {
+  let value = raw.trim().replace(/^```(?:svg|xml)?\s*/i, '').replace(/\s*```$/, '').trim();
+  const start = value.indexOf('<svg');
+  const end = value.lastIndexOf('</svg>');
+  if (start === -1 || end === -1 || end < start) return null;
+
+  let svg = value.slice(start, end + 6).trim();
+  if (svg.length > MAX_SVG_CHARS) return null;
+  if (/<\s*\/?\s*script\b|foreignObject|on[a-z]+\s*=|javascript:|href\s*=\s*["'](?:https?:)?\/\//i.test(svg)) return null;
+  if (!/xmlns\s*=\s*["']http:\/\/www\.w3\.org\/2000\/svg["']/i.test(svg)) {
+    svg = svg.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"');
+  }
+  const openEnd = svg.indexOf('>');
+  const openTag = svg.slice(0, openEnd);
+  if (openEnd !== -1 && !/viewBox\s*=/i.test(openTag)) {
+    svg = `${openTag} viewBox="0 0 1600 900">${svg.slice(openEnd + 1)}`;
+  }
+  return svg;
+}
+
+async function renderSvgConcept(apiKey: string, base64: string, mimeType: string, prompt: string): Promise<string> {
+  const model = process.env.GEMINI_MODEL?.trim() || DEFAULT_TEXT_MODEL;
+  const svgPrompt = [
+    'You are an architectural illustrator. The attached image is a 3D massing screenshot of a house.',
+    'Create a polished exterior architectural concept illustration as one self-contained SVG.',
+    'Match the exact massing: same footprint, floor count, roof form, openings, balcony, carport, solar placement and camera angle.',
+    'Upgrade only materials, lighting, sky, landscaping, shadows and finish quality.',
+    `Rendering intent: ${prompt.slice(0, 1200)}`,
+    'Return ONLY raw SVG markup. Use viewBox="0 0 1600 900", gradients, shapes, paths, filters and opacity for depth.',
+    'No markdown, no prose, no external images, no scripts, no foreignObject, no text, no logos, no watermarks.',
+  ].join('\n');
+
+  let res: Response;
+  try {
+    res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: svgPrompt },
+            { inline_data: { mime_type: mimeType, data: base64 } },
+          ],
+        }],
+        generationConfig: { maxOutputTokens: 8192, temperature: 0.35 },
+      }),
+      signal: AbortSignal.timeout(90_000),
+    });
+  } catch (err) {
+    console.error('Gemini concept request failed', err);
+    throw new Error('The free concept renderer is unavailable right now.');
+  }
+
+  const text = await res.text();
+  if (!res.ok) {
+    console.error('Gemini concept error', res.status, text.slice(0, 500));
+    throw new Error(`Free concept renderer error (${res.status}).`);
+  }
+
+  let data: unknown;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error('The free concept renderer returned an invalid response.');
+  }
+
+  const record = data as { candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] } }[] };
+  const raw = (record.candidates?.[0]?.content?.parts ?? [])
+    .filter((part) => !part.thought && part.text)
+    .map((part) => part.text)
+    .join('');
+  const svg = extractSvg(raw);
+  if (!svg) throw new Error('The free concept renderer could not produce a valid illustration.');
+  return `data:image/svg+xml;base64,${Buffer.from(svg, 'utf8').toString('base64')}`;
+}
+
 export async function POST(request: Request): Promise<Response> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return json({ error: 'AI rendering is not set up yet.' }, 503);
@@ -112,66 +192,82 @@ export async function POST(request: Request): Promise<Response> {
     : '';
   if (!prompt) return json({ error: 'A render prompt is required.' }, 400);
 
-  const configuredModel = process.env.GEMINI_IMAGE_MODEL?.trim();
-  const models = configuredModel ? [configuredModel] : [DEFAULT_IMAGE_MODEL, ...FALLBACK_IMAGE_MODELS];
-  const imageSize = process.env.GEMINI_IMAGE_SIZE || DEFAULT_IMAGE_SIZE;
-  const aspectRatio = process.env.GEMINI_IMAGE_ASPECT_RATIO || DEFAULT_ASPECT_RATIO;
+  const base64 = match[2];
   const mimeType = `image/${match[1].toLowerCase()}`;
-  let lastError = 'No Gemini image model is available for this key.';
+  let imageError = '';
 
-  for (const model of models) {
-    let res: Response;
-    try {
-      res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-goog-api-key': apiKey,
-          'Api-Revision': '2026-05-20',
-        },
-        body: JSON.stringify({
-          model,
-          store: false,
-          input: [
-            { type: 'text', text: prompt },
-            { type: 'image', mime_type: mimeType, data: match[2] },
-          ],
-          response_format: responseFormat(model, aspectRatio, imageSize),
-        }),
-        signal: AbortSignal.timeout(90_000),
-      });
-    } catch (err) {
-      console.error('Gemini image request failed', err);
-      lastError = 'The AI renderer is unavailable right now.';
-      continue;
-    }
+  if (!imageModelsBlocked) {
+    const configuredModel = process.env.GEMINI_IMAGE_MODEL?.trim();
+    const models = configuredModel ? [configuredModel] : [DEFAULT_IMAGE_MODEL, ...FALLBACK_IMAGE_MODELS];
+    const imageSize = process.env.GEMINI_IMAGE_SIZE || DEFAULT_IMAGE_SIZE;
+    const aspectRatio = process.env.GEMINI_IMAGE_ASPECT_RATIO || DEFAULT_ASPECT_RATIO;
+    let lastError = 'No Gemini image model is available for this key.';
 
-    const text = await res.text();
-    if (!res.ok) {
-      console.error('Gemini image error', res.status, text.slice(0, 500));
-      lastError = upstreamError(text, res.status);
-      if (isFreeTierBlock(res.status, text)) {
-        return json({ error: 'Gemini image models require a paid tier. Enable billing in Google AI Studio, then redeploy.' }, 402);
+    for (const model of models) {
+      let res: Response;
+      try {
+        res = await fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+            'Api-Revision': '2026-05-20',
+          },
+          body: JSON.stringify({
+            model,
+            store: false,
+            input: [
+              { type: 'text', text: prompt },
+              { type: 'image', mime_type: mimeType, data: base64 },
+            ],
+            response_format: responseFormat(model, aspectRatio, imageSize),
+          }),
+          signal: AbortSignal.timeout(90_000),
+        });
+      } catch (err) {
+        console.error('Gemini image request failed', err);
+        lastError = 'The AI renderer is unavailable right now.';
+        continue;
       }
-      if (isModelError(res.status, text)) continue;
-      return json({ error: lastError }, res.status === 429 ? 429 : 502);
-    }
 
-    let data: unknown;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      console.error('Gemini returned invalid JSON', text.slice(0, 500));
-      return json({ error: 'The AI renderer returned an invalid response.' }, 502);
-    }
+      const text = await res.text();
+      if (!res.ok) {
+        console.error('Gemini image error', res.status, text.slice(0, 500));
+        lastError = upstreamError(text, res.status);
+        if (isFreeTierBlock(res.status, text)) {
+          imageModelsBlocked = true;
+          break;
+        }
+        if (isModelError(res.status, text)) continue;
+        imageError = lastError;
+        break;
+      }
 
-    const rendered = findImage(data);
-    if (!rendered) {
-      console.error('Gemini returned no image', text.slice(0, 500));
-      return json({ error: 'The AI renderer could not create this view. Please try again.' }, 502);
+      let data: unknown;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error('Gemini returned invalid JSON', text.slice(0, 500));
+        imageError = 'The AI renderer returned an invalid response.';
+        break;
+      }
+
+      const rendered = findImage(data);
+      if (!rendered) {
+        console.error('Gemini returned no image', text.slice(0, 500));
+        imageError = 'The AI renderer could not create this view.';
+        break;
+      }
+      return json({ image: rendered.image, source: 'gemini' });
     }
-    return json({ image: rendered.image, source: 'gemini' });
+    imageError = imageError || lastError;
   }
 
-  return json({ error: lastError }, 502);
+  try {
+    const image = await renderSvgConcept(apiKey, base64, mimeType, prompt);
+    return json({ image, source: 'gemini-svg' });
+  } catch (err) {
+    console.error('Concept fallback failed', err);
+    return json({ error: err instanceof Error ? err.message : imageError || 'Rendering failed. Please try again.' }, 502);
+  }
 }
