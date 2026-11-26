@@ -984,15 +984,78 @@ const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(functi
     }
 
     if (plan.spec.features.includes('Solar-ready')) {
-      const roofTop = main.base + main.h + (plan.flatRoof ? 0.36 : plan.roofRise * 0.72);
-      const rows = Math.max(2, Math.floor(main.w / 2.2));
-      for (let row = 0; row < rows; row += 1) {
-        const x = main.x - main.w * 0.36 + (row * main.w * 0.72) / Math.max(1, rows - 1) + (plan.facadeVariant - 1) * main.w * 0.03;
-        const panel = box(1.5, 0.06, 2.35, x, roofTop + 0.18, main.z - main.d * 0.1, materials.solar, false);
-        panel.rotation.x = -0.3;
-        box(1.55, 0.05, 0.05, x, roofTop + 0.42, main.z - main.d * 0.1 + 1.05, materials.metal, false);
-        box(1.55, 0.05, 0.05, x, roofTop + 0.02, main.z - main.d * 0.1 - 1.05, materials.metal, false);
+      const roofVolume = plan.volumes.reduce((best, volume) => (
+        volume.base + volume.h > best.base + best.h ? volume : best
+      ), plan.volumes[0]);
+      const roofTop = roofVolume.base + roofVolume.h;
+      const halfW = roofVolume.w / 2;
+      const halfD = roofVolume.d / 2;
+      const panelWidth = 1.45;
+      const panelDepth = 2.1;
+      const positions: { x: number; y: number; z: number; rotX: number; rotZ: number }[] = [];
+
+      if (plan.flatRoof) {
+        const columns = THREE.MathUtils.clamp(Math.floor((roofVolume.w - 1.2) / (panelWidth + 0.42)), 1, 5);
+        const rows = THREE.MathUtils.clamp(Math.floor((roofVolume.d - 1.2) / (panelDepth + 0.5)), 1, 4);
+        const stepX = columns > 1 ? Math.max(0, roofVolume.w - panelWidth - 0.8) / (columns - 1) : 0;
+        const stepZ = rows > 1 ? Math.max(0, roofVolume.d - panelDepth - 0.8) / (rows - 1) : 0;
+        for (let column = 0; column < columns; column += 1) {
+          for (let row = 0; row < rows; row += 1) {
+            positions.push({
+              x: roofVolume.x - stepX * (columns - 1) / 2 + column * stepX + (plan.facadeVariant - 1) * 0.16,
+              y: roofTop + 0.9,
+              z: roofVolume.z - stepZ * (rows - 1) / 2 + row * stepZ,
+              rotX: -0.18,
+              rotZ: 0,
+            });
+          }
+        }
+      } else {
+        const pitch = Math.atan2(plan.roofRise, halfW);
+        const side = plan.facadeVariant === 0 ? -1 : 1;
+        const columns = THREE.MathUtils.clamp(Math.floor((halfW - 0.9) / (panelWidth + 0.3)), 1, 2);
+        const rows = THREE.MathUtils.clamp(Math.floor((roofVolume.d * 0.42) / (panelDepth + 0.4)), 1, 3);
+        const stepZ = rows > 1 ? Math.min(halfD * 0.76, (rows - 1) * (panelDepth + 0.55)) / (rows - 1) : 0;
+        for (let column = 0; column < columns; column += 1) {
+          const inset = panelWidth / 2 + 0.4 + column * (panelWidth + 0.3);
+          const slopeX = side * Math.max(0, halfW - inset);
+          const surfaceY = roofTop + plan.roofRise * (1 - Math.abs(slopeX) / halfW);
+          for (let row = 0; row < rows; row += 1) {
+            positions.push({
+              x: roofVolume.x + slopeX,
+              y: surfaceY + 0.16,
+              z: roofVolume.z - stepZ * (rows - 1) / 2 + row * stepZ,
+              rotX: 0,
+              rotZ: -side * pitch,
+            });
+          }
+        }
       }
+
+      positions.forEach((position) => {
+        const panel = box(panelWidth, 0.06, panelDepth, position.x, position.y, position.z, materials.solar, false);
+        panel.rotation.set(position.rotX, 0, position.rotZ);
+        for (const railZ of [-1, 1]) {
+          const rail = box(
+            panelWidth + 0.08, 0.05, 0.05,
+            position.x, position.y - 0.07, position.z + railZ * panelDepth * 0.3,
+            materials.metal, false,
+          );
+          rail.rotation.set(position.rotX, 0, position.rotZ);
+        }
+        for (const cornerX of [-1, 1]) {
+          for (const cornerZ of [-1, 1]) {
+            const post = box(
+              0.05, 0.3, 0.05,
+              position.x + cornerX * panelWidth * 0.36,
+              position.y - 0.2,
+              position.z + cornerZ * panelDepth * 0.32,
+              materials.metal, false,
+            );
+            post.rotation.set(position.rotX, 0, position.rotZ);
+          }
+        }
+      });
     }
 
     if (plan.spec.features.includes('Home office')) {
