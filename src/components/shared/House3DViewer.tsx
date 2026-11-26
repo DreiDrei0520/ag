@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -14,6 +14,26 @@ interface House3DViewerProps {
   spec: HouseDesignSpec;
   height?: number;
   seed?: number;
+}
+
+export type RenderView = 'front' | 'corner' | 'aerial';
+export type LightingMode = 'day' | 'night';
+
+export interface HouseRenderCapture {
+  image: string;
+  view: RenderView;
+  lighting: LightingMode;
+}
+
+export interface House3DViewerHandle {
+  capture: (view: RenderView, lighting: LightingMode) => string | null;
+  setLighting: (lighting: LightingMode) => void;
+}
+
+interface ViewerState {
+  applyPreset: (view: RenderView) => void;
+  setLighting: (lighting: LightingMode) => void;
+  capture: (view: RenderView, lighting: LightingMode) => string | null;
 }
 
 type TextureKind = 'stucco' | 'wood' | 'stone' | 'roof' | 'grass' | 'concrete' | 'solar';
@@ -195,34 +215,55 @@ function createTexture(kind: TextureKind, seed: number): THREE.CanvasTexture {
   return texture;
 }
 
-function createSkyTexture(): THREE.CanvasTexture {
+function createSkyTexture(mode: 'day' | 'night' = 'day'): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
   canvas.height = 512;
   const ctx = canvas.getContext('2d')!;
   const gradient = ctx.createLinearGradient(0, 0, 0, 512);
-  gradient.addColorStop(0, '#3f74a8');
-  gradient.addColorStop(0.42, '#9ec4dd');
-  gradient.addColorStop(0.68, '#e5eef1');
-  gradient.addColorStop(1, '#f2ead8');
-  ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, 1024, 512);
-  const sun = ctx.createRadialGradient(300, 185, 8, 300, 185, 190);
-  sun.addColorStop(0, 'rgba(255,250,225,0.95)');
-  sun.addColorStop(0.18, 'rgba(255,238,190,0.55)');
-  sun.addColorStop(1, 'rgba(255,238,190,0)');
-  ctx.fillStyle = sun;
-  ctx.fillRect(0, 0, 1024, 512);
   const random = seeded(7);
-  for (let index = 0; index < 90; index += 1) {
-    const x = random() * 1024;
-    const y = 60 + random() * 210;
-    const width = 30 + random() * 110;
-    ctx.fillStyle = `rgba(255,255,255,${0.03 + random() * 0.1})`;
-    ctx.beginPath();
-    ctx.ellipse(x, y, width, 4 + random() * 12, 0, 0, Math.PI * 2);
-    ctx.fill();
+
+  if (mode === 'night') {
+    gradient.addColorStop(0, '#081426');
+    gradient.addColorStop(0.45, '#17304a');
+    gradient.addColorStop(0.74, '#34465b');
+    gradient.addColorStop(1, '#555044');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1024, 512);
+    const moon = ctx.createRadialGradient(770, 125, 6, 770, 125, 130);
+    moon.addColorStop(0, 'rgba(232,240,255,0.95)');
+    moon.addColorStop(0.16, 'rgba(185,205,235,0.45)');
+    moon.addColorStop(1, 'rgba(150,180,220,0)');
+    ctx.fillStyle = moon;
+    ctx.fillRect(0, 0, 1024, 512);
+    for (let index = 0; index < 150; index += 1) {
+      ctx.fillStyle = `rgba(255,255,255,${0.25 + random() * 0.5})`;
+      ctx.fillRect(random() * 1024, 20 + random() * 260, 1 + random() * 1.5, 1 + random() * 1.5);
+    }
+  } else {
+    gradient.addColorStop(0, '#3f74a8');
+    gradient.addColorStop(0.42, '#9ec4dd');
+    gradient.addColorStop(0.68, '#e5eef1');
+    gradient.addColorStop(1, '#f2ead8');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, 1024, 512);
+    const sun = ctx.createRadialGradient(300, 185, 8, 300, 185, 190);
+    sun.addColorStop(0, 'rgba(255,250,225,0.95)');
+    sun.addColorStop(0.18, 'rgba(255,238,190,0.55)');
+    sun.addColorStop(1, 'rgba(255,238,190,0)');
+    ctx.fillStyle = sun;
+    ctx.fillRect(0, 0, 1024, 512);
+    for (let index = 0; index < 90; index += 1) {
+      const x = random() * 1024;
+      const y = 60 + random() * 210;
+      const width = 30 + random() * 110;
+      ctx.fillStyle = `rgba(255,255,255,${0.03 + random() * 0.1})`;
+      ctx.beginPath();
+      ctx.ellipse(x, y, width, 4 + random() * 12, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
+
   const texture = new THREE.CanvasTexture(canvas);
   texture.mapping = THREE.EquirectangularReflectionMapping;
   texture.colorSpace = THREE.SRGBColorSpace;
@@ -332,10 +373,22 @@ function faceTransform(face: ExteriorFace, volume: MassVolume, u: number, y: num
   return { position: new THREE.Vector3(volume.x - volume.w / 2 - offset, y, volume.z + u), rotation: Math.PI / 2 };
 }
 
-export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DViewerProps) {
+const House3DViewer = forwardRef<House3DViewerHandle, House3DViewerProps>(function House3DViewer(
+  { spec, height = 420, seed = 0 },
+  ref,
+) {
   const mountRef = useRef<HTMLDivElement>(null);
-  const presetRef = useRef<(preset: 'front' | 'corner' | 'aerial') => void>(() => undefined);
+  const stateRef = useRef<ViewerState | null>(null);
   const [showPlan, setShowPlan] = useState(false);
+  const [lightingMode, setLightingMode] = useState<LightingMode>('day');
+
+  useImperativeHandle(ref, () => ({
+    capture: (view, lighting) => stateRef.current?.capture(view, lighting) ?? null,
+    setLighting: (lighting) => {
+      stateRef.current?.setLighting(lighting);
+      setLightingMode(lighting);
+    },
+  }));
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -346,14 +399,19 @@ export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DV
     const random = seeded((seed || 1) + 71);
     const { materials, textures } = buildMaterials(plan, palette, seed || 1);
     const shadowTexture = createShadowTexture();
-    const skyTexture = createSkyTexture();
+    const daySkyTexture = createSkyTexture('day');
+    const nightSkyTexture = createSkyTexture('night');
 
     const scene = new THREE.Scene();
-    scene.background = skyTexture;
+    scene.background = daySkyTexture;
     scene.fog = new THREE.Fog(0xe4ecf0, 70, 180);
 
     const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 400);
-    const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+    const renderer = new THREE.WebGLRenderer({
+      antialias: true,
+      powerPreference: 'high-performance',
+      preserveDrawingBuffer: true,
+    });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -397,6 +455,15 @@ export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DV
     const planeGeometry = new THREE.PlaneGeometry(1, 1);
     const house = new THREE.Group();
     scene.add(house);
+
+    const nightLights: THREE.PointLight[] = [];
+    const addNightLight = (x: number, y: number, z: number, intensity: number, distance: number) => {
+      const light = new THREE.PointLight(0xffd7a0, 0, distance, 2);
+      light.position.set(x, y, z);
+      light.userData.intensity = intensity;
+      house.add(light);
+      nightLights.push(light);
+    };
 
     const box = (
       w: number, h: number, d: number, x: number, y: number, z: number,
@@ -538,6 +605,9 @@ export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DV
       for (let index = 0; index < stepCount; index += 1) {
         box(2.5 + index * 0.4, 0.14, 0.5 + index * 0.35, x, 0.07 + index * 0.03, main.z + main.d / 2 + 0.55 + index * 0.32, materials.concrete);
       }
+      if (plan.finishTier === 'standard') {
+        box(0.42, 0.14, 0.12, x, doorHeight + 0.3, main.z + main.d / 2 + 0.12, materials.light, false);
+      }
       if (plan.finishTier !== 'standard') {
         const canopyWidth = plan.finishTier === 'luxury' ? 4.4 : 3.2;
         box(canopyWidth, 0.18, 1.8, x, doorHeight + 0.55, main.z + main.d / 2 + 0.8, materials.roof);
@@ -628,13 +698,24 @@ export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DV
       if (style === 'Modern' || style === 'Minimalist') {
         box(volume.w + 0.22, 0.1, volume.d + 0.22, volume.x, volume.base + volume.h * 0.58, volume.z, materials.metal, false);
       }
-      if (plan.finishTier === 'luxury' && style === 'Luxury') {
+      if (plan.finishTier === 'elegant') {
         const frontOpenings = openings.get(volume)?.front ?? [];
-        for (let index = 0; index < 5; index += 1) {
-          const u = -volume.w * 0.36 + index * volume.w * 0.18;
-          if (frontOpenings.some((opening) => Math.abs(u - opening.u) < opening.width / 2 + 0.14)) continue;
+        const count = Math.max(5, Math.floor(volume.w / 0.85));
+        for (let index = 0; index < count; index += 1) {
+          const u = -volume.w / 2 + 0.45 + (index * (volume.w - 0.9)) / Math.max(1, count - 1);
+          if (frontOpenings.some((opening) => Math.abs(u - opening.u) < opening.width / 2 + 0.12)) continue;
+          box(0.075, volume.h * 0.82, 0.1, volume.x + u, volume.base + volume.h / 2, volume.z + volume.d / 2 + 0.085, materials.wood, false);
+        }
+        box(volume.w + 0.18, 0.09, volume.d + 0.18, volume.x, volume.base + volume.h * 0.34, volume.z, materials.wood, false);
+      }
+      if (plan.finishTier === 'luxury') {
+        const frontOpenings = openings.get(volume)?.front ?? [];
+        for (let index = 0; index < 7; index += 1) {
+          const u = -volume.w * 0.42 + (index * volume.w * 0.84) / 6;
+          if (frontOpenings.some((opening) => Math.abs(u - opening.u) < opening.width / 2 + 0.12)) continue;
           box(0.055, volume.h * 0.9, 0.09, volume.x + u, volume.base + volume.h / 2, volume.z + volume.d / 2 + 0.09, materials.metal, false);
         }
+        box(volume.w + 0.24, 0.08, volume.d + 0.24, volume.x, volume.base + volume.h * 0.66, volume.z, materials.metal, false);
       }
     };
 
@@ -927,6 +1008,12 @@ export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DV
       }
     }
 
+    addNightLight(entryX, 2.4, main.z + main.d / 2 + 1.2, 6, 9);
+    for (const side of [-1, 1]) {
+      addNightLight(main.x + side * main.w * 0.38, 1.9, main.z + main.d / 2 + 1.1, 3.5, 7);
+    }
+    addNightLight(0, Math.max(2.5, plan.height * 0.55), main.z + main.d / 2 + 4, 2.5, 13);
+
     const extent = plan.volumes.reduce((maximum, volume) => Math.max(
       maximum,
       Math.abs(volume.x) + volume.w / 2,
@@ -951,7 +1038,6 @@ export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DV
       controls.target.copy(target);
       controls.update();
     };
-    presetRef.current = applyPreset;
     applyPreset('corner');
 
     const composer = new EffectComposer(renderer);
@@ -977,6 +1063,65 @@ export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DV
     const observer = new ResizeObserver(resize);
     observer.observe(mount);
     resize();
+
+    const baseLighting = {
+      hemi: hemi.intensity,
+      sun: sun.intensity,
+      fill: fill.intensity,
+      exposure: renderer.toneMappingExposure,
+    };
+    let currentLighting: LightingMode = 'day';
+
+    const setLighting = (mode: LightingMode) => {
+      currentLighting = mode;
+      scene.background = mode === 'night' ? nightSkyTexture : daySkyTexture;
+      scene.fog = new THREE.Fog(mode === 'night' ? 0x223146 : 0xe4ecf0, 70, 180);
+      hemi.intensity = mode === 'night' ? 0.42 : baseLighting.hemi;
+      sun.intensity = mode === 'night' ? 0.22 : baseLighting.sun;
+      fill.intensity = mode === 'night' ? 0.24 : baseLighting.fill;
+      renderer.toneMappingExposure = mode === 'night' ? 1.36 : baseLighting.exposure;
+      nightLights.forEach((light) => {
+        light.intensity = mode === 'night' ? Number(light.userData.intensity) : 0;
+      });
+    };
+
+    const capture = (view: RenderView, mode: LightingMode): string | null => {
+      const previousLighting = currentLighting;
+      const previousPosition = camera.position.clone();
+      const previousTarget = controls.target.clone();
+      const previousSize = new THREE.Vector2();
+      renderer.getSize(previousSize);
+      const previousPixelRatio = renderer.getPixelRatio();
+      let image: string | null = null;
+
+      try {
+        setLighting(mode);
+        applyPreset(view);
+        renderer.setPixelRatio(1);
+        renderer.setSize(1600, 1000, false);
+        composer.setPixelRatio(1);
+        composer.setSize(1600, 1000);
+        camera.aspect = 1.6;
+        camera.updateProjectionMatrix();
+        controls.update();
+        composer.render();
+        image = renderer.domElement.toDataURL('image/png');
+      } finally {
+        renderer.setPixelRatio(previousPixelRatio);
+        renderer.setSize(previousSize.x, previousSize.y, false);
+        composer.setPixelRatio(previousPixelRatio);
+        composer.setSize(previousSize.x, previousSize.y);
+        camera.aspect = previousSize.x / previousSize.y;
+        camera.updateProjectionMatrix();
+        camera.position.copy(previousPosition);
+        controls.target.copy(previousTarget);
+        controls.update();
+        setLighting(previousLighting);
+      }
+      return image;
+    };
+
+    stateRef.current = { applyPreset, setLighting, capture };
 
     let visible = true;
     const visibility = new IntersectionObserver((entries) => {
@@ -1016,9 +1161,11 @@ export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DV
       disposedMaterials.forEach((material) => material.dispose());
       textures.forEach((texture) => texture.dispose());
       shadowTexture.dispose();
-      skyTexture.dispose();
+      daySkyTexture.dispose();
+      nightSkyTexture.dispose();
       environment.texture.dispose();
       pmrem.dispose();
+      stateRef.current = null;
       renderer.dispose();
       if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
     };
@@ -1030,9 +1177,23 @@ export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DV
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-agdark-800 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-white">
         <span>Interactive 3D model</span>
         <div className="flex items-center gap-1">
-          <button type="button" onClick={() => presetRef.current('front')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Front</button>
-          <button type="button" onClick={() => presetRef.current('corner')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Corner</button>
-          <button type="button" onClick={() => presetRef.current('aerial')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Aerial</button>
+          <button type="button" onClick={() => stateRef.current?.applyPreset('front')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Front</button>
+          <button type="button" onClick={() => stateRef.current?.applyPreset('corner')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Corner</button>
+          <button type="button" onClick={() => stateRef.current?.applyPreset('aerial')} className="rounded border border-agdark-600 px-1.5 py-0.5 text-[9px] hover:bg-agdark-700">Aerial</button>
+          <button
+            type="button"
+            onClick={() => { stateRef.current?.setLighting('day'); setLightingMode('day'); }}
+            className={`rounded border px-1.5 py-0.5 text-[9px] ${lightingMode === 'day' ? 'border-agorange text-agorange' : 'border-agdark-600 hover:bg-agdark-700'}`}
+          >
+            Day
+          </button>
+          <button
+            type="button"
+            onClick={() => { stateRef.current?.setLighting('night'); setLightingMode('night'); }}
+            className={`rounded border px-1.5 py-0.5 text-[9px] ${lightingMode === 'night' ? 'border-agorange text-agorange' : 'border-agdark-600 hover:bg-agdark-700'}`}
+          >
+            Night
+          </button>
           <button
             type="button"
             onClick={() => setShowPlan((current) => !current)}
@@ -1047,4 +1208,6 @@ export default function House3DViewer({ spec, height = 420, seed = 0 }: House3DV
       {showPlan ? <HouseFloorPlan plan={buildHousePlan(spec, seed || 1)} compact /> : null}
     </div>
   );
-}
+});
+
+export default House3DViewer;

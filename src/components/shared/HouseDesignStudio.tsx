@@ -1,8 +1,9 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Check, Copy, Image as ImageIcon, Send, Shuffle, Sparkles } from 'lucide-react';
 import { cn } from '../../lib/cn';
 import { DESIGN_PACKAGE } from '../../lib/companyInfo';
-import House3DViewer from './House3DViewer';
+import House3DViewer, { type House3DViewerHandle, type HouseRenderCapture, type LightingMode, type RenderView } from './House3DViewer';
+import HouseRenderGallery from './HouseRenderGallery';
 import {
   DESIGN_FEATURES,
   DESIGN_STYLES,
@@ -22,6 +23,15 @@ import {
 interface HouseDesignStudioProps {
   onAskAssistant: (prompt: string) => void;
 }
+
+const RENDER_SHOTS: { view: RenderView; lighting: LightingMode }[] = [
+  { view: 'front', lighting: 'day' },
+  { view: 'corner', lighting: 'day' },
+  { view: 'aerial', lighting: 'day' },
+  { view: 'front', lighting: 'night' },
+  { view: 'corner', lighting: 'night' },
+  { view: 'aerial', lighting: 'night' },
+];
 
 interface ChipProps {
   active: boolean;
@@ -95,6 +105,34 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
   const [variant, setVariant] = useState(() => Math.floor(Math.random() * 1_000_000));
   const [note, setNote] = useState('');
   const [copied, setCopied] = useState(false);
+  const [renders, setRenders] = useState<HouseRenderCapture[]>([]);
+  const [rendering, setRendering] = useState(false);
+  const viewerRef = useRef<House3DViewerHandle>(null);
+
+  const captureRenders = useCallback(() => {
+    const viewer = viewerRef.current;
+    if (!viewer) {
+      setRendering(false);
+      return;
+    }
+    setRendering(true);
+    const shots = RENDER_SHOTS.map(({ view, lighting }) => {
+      const image = viewer.capture(view, lighting);
+      return image ? { image, view, lighting } : null;
+    }).filter((shot): shot is HouseRenderCapture => shot !== null);
+    setRenders(shots);
+    setRendering(false);
+  }, []);
+
+  useEffect(() => {
+    if (!modelSpec) {
+      setRenders([]);
+      return;
+    }
+    setRendering(true);
+    const timer = window.setTimeout(captureRenders, 120);
+    return () => window.clearTimeout(timer);
+  }, [modelSpec, variant, captureRenders]);
 
   const update = <K extends keyof HouseDesignSpec>(key: K, value: HouseDesignSpec[K]) => {
     setSpec((current) => ({ ...current, [key]: value }));
@@ -142,7 +180,7 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
     if (!result) return;
     setModelSpec({ ...spec });
     setVariant((current) => nextVariant(current));
-    setNote('Interactive 3D model generated from your specs. Use Shuffle for another variation, or the Floor plan button to inspect room allocation. For construction-ready plans, avail the design package.');
+    setNote('Interactive 3D model and realistic day/night renders generated from your specs. Use Shuffle for another variation, or the Floor plan button to inspect room allocation. For construction-ready plans, avail the design package.');
   };
 
   return (
@@ -295,7 +333,8 @@ export default function HouseDesignStudio({ onAskAssistant }: HouseDesignStudioP
 
           {modelSpec ? (
             <div className="space-y-2">
-              <House3DViewer spec={modelSpec} height={340} seed={variant} />
+              <House3DViewer ref={viewerRef} spec={modelSpec} height={340} seed={variant} />
+              <HouseRenderGallery renders={renders} rendering={rendering} onGenerate={captureRenders} disabled={!modelSpec} />
               {note ? <p className="text-[10px] leading-4 text-agdark-500">{note}</p> : null}
             </div>
           ) : null}
