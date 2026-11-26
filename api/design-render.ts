@@ -77,6 +77,10 @@ function isModelError(status: number, text: string): boolean {
   return (status === 400 || status === 403) && /model|not found|not supported|unsupported|permission|access/i.test(text);
 }
 
+function isFreeTierBlock(status: number, text: string): boolean {
+  return status === 429 && /free tier/i.test(text) && /limit:\s*0|quota.*0|not available/i.test(text);
+}
+
 function responseFormat(model: string, aspectRatio: string, imageSize: string) {
   const format: Record<string, string> = { type: 'image', aspect_ratio: aspectRatio };
   if (!/2\.5-flash-image/i.test(model)) format.image_size = imageSize;
@@ -146,6 +150,9 @@ export async function POST(request: Request): Promise<Response> {
     if (!res.ok) {
       console.error('Gemini image error', res.status, text.slice(0, 500));
       lastError = upstreamError(text, res.status);
+      if (isFreeTierBlock(res.status, text)) {
+        return json({ error: 'Gemini image models require a paid tier. Enable billing in Google AI Studio, then redeploy.' }, 402);
+      }
       if (isModelError(res.status, text)) continue;
       return json({ error: lastError }, res.status === 429 ? 429 : 502);
     }
